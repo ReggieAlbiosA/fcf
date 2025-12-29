@@ -21,7 +21,9 @@ IGNORE_CASE=false
 TYPE_FILTER=""
 SHOW_SIZE=false
 MAX_DISPLAY=0  # 0 = unlimited
-HIDDEN_FILES=false
+
+# Clean up any stale navigation path on start
+rm -f /tmp/fcf_nav_path
 
 # Store results for navigation
 declare -a RESULTS=()
@@ -43,9 +45,19 @@ ${BOLD}OPTIONS:${NC}
     ${CYAN}-h, --help${NC}              Show this help message
     ${CYAN}-i, --ignore-case${NC}       Case-insensitive pattern matching
     ${CYAN}-t, --type TYPE${NC}         Filter by type: ${YELLOW}f${NC}(file) or ${YELLOW}d${NC}(directory)
-    ${CYAN}-H, --hidden${NC}            Include hidden files/folders
     ${CYAN}--show-size${NC}             Display file sizes
     ${CYAN}--max-display NUM${NC}       Maximum results to display (default: unlimited)
+
+${BOLD}SHELL INTEGRATION (for navigation to work):${NC}
+    Add this to your ${CYAN}~/.bashrc${NC} or ${CYAN}~/.zshrc${NC}:
+
+    ${YELLOW}fcf() {
+        /path/to/fcf.sh "\$@"
+        if [[ -f /tmp/fcf_nav_path ]]; then
+            cd "\$(cat /tmp/fcf_nav_path)"
+            rm -f /tmp/fcf_nav_path
+        fi
+    }${NC}
 
 ${BOLD}EXAMPLES:${NC}
     ${GREEN}# Interactive mode${NC}
@@ -161,16 +173,8 @@ build_fd_command() {
     local search_path=$2
     local fd_cmd=$(get_fd_cmd)
 
-    # Base options
-    local opts="--color never"
-
-    # Include hidden files if requested
-    if [[ "$HIDDEN_FILES" == true ]]; then
-        opts+=" --hidden"
-    fi
-
-    # Don't respect .gitignore for complete results
-    opts+=" --no-ignore"
+    # Base options - include hidden files and don't respect .gitignore for complete results
+    local opts="--color never --hidden --no-ignore"
 
     # Type filter
     if [[ -n "$TYPE_FILTER" ]]; then
@@ -199,16 +203,11 @@ build_find_command() {
         find_cmd+=" -type $TYPE_FILTER"
     fi
 
-    # Pattern matching
+    # Pattern matching (hidden files included by default)
     if [[ "$IGNORE_CASE" == true ]]; then
         find_cmd+=" -iname \"$pattern\""
     else
         find_cmd+=" -name \"$pattern\""
-    fi
-
-    # Exclude hidden if not requested
-    if [[ "$HIDDEN_FILES" == false ]]; then
-        find_cmd+=" -not -path '*/.*'"
     fi
 
     echo "$find_cmd"
@@ -238,18 +237,17 @@ navigate_to_path() {
         return 1
     fi
 
-    # Change to the directory
-    cd "$target_path" 2>/dev/null
-    if [[ $? -eq 0 ]]; then
-        echo -e "${GREEN}✓ Navigated to:${NC} ${CYAN}$target_path${NC}"
-        echo ""
-        echo -e "${DIM}Contents:${NC}"
-        ls -la --color=auto 2>/dev/null || ls -la
-        return 0
-    else
-        echo -e "${RED}ERROR:${NC} Could not navigate to '$target_path'"
-        return 1
-    fi
+    # Get absolute path
+    target_path=$(cd "$target_path" 2>/dev/null && pwd)
+
+    # Save path to temp file for shell integration
+    echo "$target_path" > /tmp/fcf_nav_path
+
+    echo -e "${GREEN}✓ Will navigate to:${NC} ${CYAN}$target_path${NC}"
+    echo ""
+    echo -e "${DIM}Contents:${NC}"
+    ls -la --color=auto "$target_path" 2>/dev/null || ls -la "$target_path"
+    return 0
 }
 
 # Function to show options menu
@@ -299,10 +297,6 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             shift 2
-            ;;
-        -H|--hidden)
-            HIDDEN_FILES=true
-            shift
             ;;
         --show-size)
             SHOW_SIZE=true
@@ -442,7 +436,6 @@ while true; do
         echo -e "${DIM}Tips:${NC}"
         echo -e "  - Try a different pattern"
         echo -e "  - Use ${CYAN}-i${NC} for case-insensitive search"
-        echo -e "  - Use ${CYAN}-H${NC} to include hidden files"
 
         # Show options even when no results
         show_options_menu

@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 GITHUB_USER="ReggieAlbiosA"
 GITHUB_REPO="fcf"
 GITHUB_BRANCH="main"
-SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/refs/heads/${GITHUB_BRANCH}/fcf.sh"
+SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/refs/heads/${GITHUB_BRANCH}/ubuntu/fcf.sh"
 
 # Check if fd is installed (for fast parallel searching)
 has_fd() {

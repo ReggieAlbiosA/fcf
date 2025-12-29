@@ -22,15 +22,29 @@ Think of it as `find` with a friendly interface - interactive prompts, color-cod
 
 ### Installation
 
+#### Ubuntu/Linux
+
 Install with a single command:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/install.sh | bash
 ```
 
 The installer automatically installs to **both locations**:
 - **User:** `~/.local/bin/fcf` - Available for your user account
 - **System:** `/usr/local/bin/fcf` - Available for all users (requires sudo)
+
+#### Windows (PowerShell)
+
+Run in PowerShell (as Administrator for system-wide install):
+
+```powershell
+irm https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/install.ps1 | iex
+```
+
+The installer automatically installs to:
+- **User:** `%USERPROFILE%\.local\bin\fcf.ps1` - Available for your user account
+- **System:** `C:\Program Files\fcf\fcf.ps1` - Available for all users (requires Admin)
 
 ## Usage
 
@@ -154,9 +168,11 @@ FCF uses `fd` for parallel searching when available:
 | Tool | Type | Speed |
 |------|------|-------|
 | `fd` | Parallel | 5-10x faster |
-| `find` | Sequential | Fallback |
+| `find` / `Get-ChildItem` | Sequential | Fallback |
 
 The installer will offer to install `fd` automatically. You can also install it manually:
+
+### Ubuntu/Linux
 
 ```bash
 # Debian/Ubuntu
@@ -170,6 +186,19 @@ sudo pacman -S fd
 
 # macOS
 brew install fd
+```
+
+### Windows
+
+```powershell
+# Using winget (recommended)
+winget install sharkdp.fd
+
+# Using Chocolatey
+choco install fd
+
+# Using Scoop
+scoop install fd
 ```
 
 ## Examples
@@ -206,31 +235,53 @@ fcf -H ".git*"
 
 ## Installation Details
 
-### User Installation
+### Ubuntu/Linux
+
+#### User Installation
 - **Location:** `~/.local/bin/fcf`
 - **Available to:** Current user only
 - **Benefit:** Works without sudo, safe and isolated
 
-### System-Wide Installation
+#### System-Wide Installation
 - **Location:** `/usr/local/bin/fcf`
 - **Requires:** sudo (installer will prompt)
+- **Available to:** All users on the system
+
+### Windows
+
+#### User Installation
+- **Location:** `%USERPROFILE%\.local\bin\fcf.ps1`
+- **Available to:** Current user only
+- **Benefit:** Works without Administrator privileges
+
+#### System-Wide Installation
+- **Location:** `C:\Program Files\fcf\fcf.ps1`
+- **Requires:** Administrator privileges
 - **Available to:** All users on the system
 
 ## Updating
 
 Re-run the installation command to update:
 
+### Ubuntu/Linux
 ```bash
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/install.sh | bash
+```
+
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/install.ps1 | iex
 ```
 
 The installer will detect existing installation and upgrade automatically.
 
 ## Manual Installation
 
+### Ubuntu/Linux
+
 ```bash
 # Download
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/fcf.sh -o fcf
+curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/fcf.sh -o fcf
 
 # Make executable
 chmod +x fcf
@@ -243,7 +294,36 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+### Windows (PowerShell)
+
+```powershell
+# Create directory
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.local\bin" -Force
+
+# Download
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/fcf.ps1" -OutFile "$env:USERPROFILE\.local\bin\fcf.ps1"
+
+# Add to PATH (run as Administrator for system-wide)
+$path = [Environment]::GetEnvironmentVariable("Path", "User")
+[Environment]::SetEnvironmentVariable("Path", "$env:USERPROFILE\.local\bin;$path", "User")
+
+# Add shell function to your PowerShell profile
+Add-Content $PROFILE @'
+
+function fcf {
+    & "$env:USERPROFILE\.local\bin\fcf.ps1" @args
+    $navPath = "$env:TEMP\fcf_nav_path"
+    if (Test-Path $navPath) {
+        Set-Location (Get-Content $navPath)
+        Remove-Item $navPath -Force
+    }
+}
+'@
+```
+
 ## Uninstallation
+
+### Ubuntu/Linux
 
 ```bash
 # User installation
@@ -256,31 +336,82 @@ sudo rm /usr/local/bin/fcf
 rm -rf ~/.fcf
 ```
 
+### Windows (PowerShell)
+
+```powershell
+# User installation
+Remove-Item "$env:USERPROFILE\.local\bin\fcf.ps1" -Force
+
+# System-wide installation (as Administrator)
+Remove-Item "C:\Program Files\fcf" -Recurse -Force
+
+# Remove logs
+Remove-Item "$env:USERPROFILE\.fcf" -Recurse -Force
+
+# Optionally remove the fcf function from your profile
+# Edit $PROFILE and remove the fcf function block
+```
+
 ## Troubleshooting
 
-### Command not found
+### Ubuntu/Linux
+
+#### Command not found
 ```bash
 source ~/.bashrc  # Reload shell config
 # or restart terminal
 ```
 
-### Permission denied
+#### Permission denied
 ```bash
 chmod +x ~/.local/bin/fcf
 ```
 
-### Slow search
+#### Slow search
 Install `fd` for parallel searching:
 ```bash
 sudo apt install fd-find  # Debian/Ubuntu
 ```
 
+### Windows
+
+#### Command not found
+```powershell
+# Reload PowerShell profile
+. $PROFILE
+# or restart PowerShell
+```
+
+#### Execution policy error
+```powershell
+# Run as Administrator
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+#### Slow search
+Install `fd` for parallel searching:
+```powershell
+winget install sharkdp.fd
+# or
+choco install fd
+# or
+scoop install fd
+```
+
 ## Installation Logs
 
+### Ubuntu/Linux
 All installations are logged to: `~/.fcf/install.log`
 
 ```bash
 cat ~/.fcf/install.log  # View installation history
+```
+
+### Windows
+All installations are logged to: `%USERPROFILE%\.fcf\install.log`
+
+```powershell
+Get-Content "$env:USERPROFILE\.fcf\install.log"  # View installation history
 ```
 
 ## Contributing

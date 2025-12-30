@@ -20,6 +20,11 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Download dependencies
+        run: |
+          cd go
+          go mod tidy
+
       - name: Build binary
         run: |
           cd go

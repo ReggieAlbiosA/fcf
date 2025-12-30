@@ -1,0 +1,14 @@
+# Snapshots (local planning docs)
+.snapshots/
+
+# Go build artifacts
+*.exe
+go/fcf
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

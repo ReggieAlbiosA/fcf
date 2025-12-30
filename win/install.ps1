@@ -19,8 +19,7 @@ $ErrorActionPreference = "Stop"
 # GitHub repository details
 $GitHubUser = "ReggieAlbiosA"
 $GitHubRepo = "fcf"
-$GitHubBranch = "main"
-$ScriptUrl = "https://raw.githubusercontent.com/$GitHubUser/$GitHubRepo/refs/heads/$GitHubBranch/win/fcf.ps1"
+$ExeUrl = "https://github.com/$GitHubUser/$GitHubRepo/releases/latest/download/fcf.exe"
 
 # Log file location
 $LogDir = Join-Path $env:USERPROFILE ".fcf"
@@ -31,20 +30,23 @@ if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne (Get-Variable -Name PSS
     $PSStyle.OutputRendering = 'Ansi'
 }
 
-# Color codes
+# ESC character for ANSI codes (works in PS 5.1+)
+$ESC = [char]27
+
+# Color codes - using $ESC for PS 5.1 compatibility
 $script:Colors = @{
-    Red     = "`e[0;31m"
-    Green   = "`e[0;32m"
-    Yellow  = "`e[1;33m"
-    Blue    = "`e[0;34m"
-    Cyan    = "`e[0;36m"
-    Bold    = "`e[1m"
-    Dim     = "`e[2m"
-    NC      = "`e[0m"
+    Red     = "$ESC[0;31m"
+    Green   = "$ESC[0;32m"
+    Yellow  = "$ESC[1;33m"
+    Blue    = "$ESC[0;34m"
+    Cyan    = "$ESC[0;36m"
+    Bold    = "$ESC[1m"
+    Dim     = "$ESC[2m"
+    NC      = "$ESC[0m"
 }
 
-# Fallback for older PowerShell
-if ($PSVersionTable.PSVersion.Major -lt 7 -and -not $env:WT_SESSION) {
+# Fallback for older PowerShell without ANSI support (legacy console)
+if ($PSVersionTable.PSVersion.Major -lt 7 -and -not $env:WT_SESSION -and -not $env:ConEmuANSI) {
     $script:Colors = @{
         Red     = ""
         Green   = ""
@@ -188,12 +190,40 @@ function Add-ToProfile {
     }
 
     $profileContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
+    if ($null -eq $profileContent) { $profileContent = "" }
 
-    # Check if fcf function already exists
-    if ($profileContent -notmatch "function fcf") {
-        $fcfFunction = @"
+    # Check if OLD fcf function exists (points to .ps1) - needs upgrade
+    if ($profileContent -match "function fcf" -and $profileContent -match "fcf\.ps1") {
+        Write-Status "info" "Found legacy fcf function in profile, upgrading..."
+        Write-Log "Removing legacy fcf function (was pointing to .ps1)"
 
-# Added by FCF installer
+        # Remove old function block using regex
+        # Matches: # Added by FCF installer ... function fcf { ... }
+        $profileContent = $profileContent -replace "(?m)# Added by FCF installer[^\n]*\nfunction fcf \{[^}]+\}\s*", ""
+        Set-Content -Path $profilePath -Value $profileContent.Trim() -Encoding UTF8
+
+        # Re-read the cleaned content
+        $profileContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
+        if ($null -eq $profileContent) { $profileContent = "" }
+    }
+
+    # Check if NEW fcf function already exists (points to .exe)
+    if ($profileContent -match "function fcf" -and $profileContent -match "fcf\.exe") {
+        Write-Log "fcf function already exists in profile (v2.0+)"
+        return $false
+    }
+
+    # Check if any fcf function exists but doesn't match our patterns
+    if ($profileContent -match "function fcf") {
+        Write-Status "warn" "Custom fcf function found in profile, skipping..."
+        Write-Log "Custom fcf function exists, not modifying"
+        return $false
+    }
+
+    # Add new function
+    $fcfFunction = @"
+
+# Added by FCF installer (v2.0+)
 function fcf {
     & "$InstallPath" @args
     `$navPath = "`$env:TEMP\fcf_nav_path"
@@ -203,31 +233,32 @@ function fcf {
     }
 }
 "@
-        Add-Content -Path $profilePath -Value $fcfFunction
-        Write-Log "Added fcf function to PowerShell profile"
-        return $true
-    }
-    else {
-        Write-Log "fcf function already exists in profile"
-        return $false
-    }
+    Add-Content -Path $profilePath -Value $fcfFunction
+    Write-Log "Added fcf function to PowerShell profile"
+    return $true
 }
 
 function Install-User {
     $c = $script:Colors
     $BinDir = Join-Path $env:USERPROFILE ".local\bin"
-    $InstallPath = Join-Path $BinDir "fcf.ps1"
+    $InstallPath = Join-Path $BinDir "fcf.exe"
     $IsUpdate = $false
 
     Write-Step "User Installation"
     Write-Host ""
 
-    # Check if already installed
+    # Check if already installed (check for both .exe and legacy .ps1)
+    $LegacyPath = Join-Path $BinDir "fcf.ps1"
     if (Test-Path $InstallPath) {
         $IsUpdate = $true
         Write-Status "info" "Package 'fcf' is already installed"
         Write-Status "info" "Preparing to upgrade fcf..."
         Write-Log "Action: UPDATE"
+    }
+    elseif (Test-Path $LegacyPath) {
+        Write-Status "info" "Found legacy fcf.ps1, upgrading to fcf.exe..."
+        Remove-Item $LegacyPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Action: UPGRADE FROM PS1 TO EXE"
     }
     else {
         Write-Status "info" "Preparing to install fcf..."
@@ -245,18 +276,19 @@ function Install-User {
     Write-Log "Created/Verified directory: $BinDir"
 
     # Download
-    Write-Status "step" "Fetching fcf from repository..."
-    Write-Progress-Custom "  Downloading $ScriptUrl"
-    Write-Log "Downloading from: $ScriptUrl"
+    Write-Status "step" "Fetching fcf from GitHub Releases..."
+    Write-Progress-Custom "  Downloading fcf.exe"
+    Write-Log "Downloading from: $ExeUrl"
 
     try {
-        Invoke-WebRequest -Uri $ScriptUrl -OutFile $InstallPath -UseBasicParsing
+        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
         Write-ProgressDone
         Write-Log "Download successful"
     }
     catch {
         Write-Host " $($c.Red)Failed$($c.NC)"
         Write-Status "error" "Download failed: $_"
+        Write-Status "info" "Make sure a release exists at: $ExeUrl"
         Write-Log "ERROR: Download failed - $_"
         throw
     }
@@ -296,7 +328,7 @@ function Install-User {
 function Install-System {
     $c = $script:Colors
     $BinDir = Join-Path $env:ProgramFiles "fcf"
-    $InstallPath = Join-Path $BinDir "fcf.ps1"
+    $InstallPath = Join-Path $BinDir "fcf.exe"
     $IsUpdate = $false
 
     Write-Step "System-Wide Installation"
@@ -312,12 +344,18 @@ function Install-System {
         return
     }
 
-    # Check if already installed
+    # Check if already installed (check for both .exe and legacy .ps1)
+    $LegacyPath = Join-Path $BinDir "fcf.ps1"
     if (Test-Path $InstallPath) {
         $IsUpdate = $true
         Write-Status "info" "Package 'fcf' is already installed (system-wide)"
         Write-Status "info" "Preparing to upgrade fcf..."
         Write-Log "Action: UPDATE (SYSTEM-WIDE)"
+    }
+    elseif (Test-Path $LegacyPath) {
+        Write-Status "info" "Found legacy fcf.ps1, upgrading to fcf.exe..."
+        Remove-Item $LegacyPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Action: UPGRADE FROM PS1 TO EXE (SYSTEM-WIDE)"
     }
     else {
         Write-Status "info" "Preparing to install fcf (system-wide)..."
@@ -335,18 +373,19 @@ function Install-System {
     Write-Log "Created/Verified directory: $BinDir"
 
     # Download
-    Write-Status "step" "Fetching fcf from repository..."
-    Write-Progress-Custom "  Downloading $ScriptUrl"
-    Write-Log "Downloading from: $ScriptUrl"
+    Write-Status "step" "Fetching fcf from GitHub Releases..."
+    Write-Progress-Custom "  Downloading fcf.exe"
+    Write-Log "Downloading from: $ExeUrl"
 
     try {
-        Invoke-WebRequest -Uri $ScriptUrl -OutFile $InstallPath -UseBasicParsing
+        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
         Write-ProgressDone
         Write-Log "Download successful"
     }
     catch {
         Write-Host " $($c.Red)Failed$($c.NC)"
         Write-Status "error" "Download failed: $_"
+        Write-Status "info" "Make sure a release exists at: $ExeUrl"
         Write-Log "ERROR: Download failed - $_"
         throw
     }
@@ -411,7 +450,7 @@ if (Test-FdInstalled) {
     Write-Log "fd: already installed"
 }
 else {
-    Write-Status "warn" "fd not found (fcf will use slower Get-ChildItem)"
+    Write-Status "warn" "fd not found (fcf will use slower filepath.WalkDir)"
     Write-Log "fd: not installed"
 
     $packageManagers = Get-PackageManager
@@ -495,7 +534,8 @@ else {
 }
 Write-Host "  $($c.Green)✓$($c.NC) Real-time streaming results"
 Write-Host "  $($c.Green)✓$($c.NC) Interactive navigation"
-Write-Host "  $($c.Green)✓$($c.NC) Pattern matching (glob, regex)"
+Write-Host "  $($c.Green)✓$($c.NC) Pattern matching (glob)"
+Write-Host "  $($c.Green)✓$($c.NC) Native Go binary (no runtime needed)"
 Write-Host ""
 
 Write-Status "info" "Installation log: $($c.Cyan)$LogFile$($c.NC)"

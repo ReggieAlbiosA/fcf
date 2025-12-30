@@ -134,6 +134,37 @@ function Test-FdInstalled {
     }
 }
 
+function Get-InstalledVersion {
+    param([string]$ExePath)
+
+    if (-not (Test-Path $ExePath)) {
+        return $null
+    }
+
+    try {
+        $output = & $ExePath -h 2>&1 | Select-Object -First 1
+        # Parse "fcf - Find File or Folder v2.0.0" -> "2.0.0"
+        if ($output -match 'v(\d+\.\d+\.\d+)') {
+            return $matches[1]
+        }
+    }
+    catch {
+        return $null
+    }
+    return $null
+}
+
+function Get-LatestVersion {
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubUser/$GitHubRepo/releases/latest" -UseBasicParsing
+        # Tag is like "v2.0.1" -> "2.0.1"
+        return $release.tag_name -replace '^v', ''
+    }
+    catch {
+        return $null
+    }
+}
+
 function Install-Fd {
     Write-Status "step" "Installing fd (fast file finder)..."
     Write-Log "Installing fd using winget"
@@ -258,22 +289,41 @@ function Install-User {
     Write-ProgressDone
     Write-Log "Created/Verified directory: $BinDir"
 
-    # Download
-    Write-Status "step" "Fetching fcf from GitHub Releases..."
-    Write-Progress-Custom "  Downloading fcf.exe"
-    Write-Log "Downloading from: $ExeUrl"
+    # Version check - skip download if already up to date
+    $installedVersion = Get-InstalledVersion -ExePath $InstallPath
+    $latestVersion = Get-LatestVersion
+    $skipDownload = $false
 
-    try {
-        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
-        Write-ProgressDone
-        Write-Log "Download successful"
+    if ($installedVersion -and $latestVersion) {
+        if ($installedVersion -eq $latestVersion) {
+            Write-Status "ok" "fcf is already up to date (v$installedVersion)"
+            Write-Log "Skipped download - already at latest version $installedVersion"
+            $skipDownload = $true
+        }
+        else {
+            Write-Status "info" "Upgrading from v$installedVersion to v$latestVersion"
+            Write-Log "Upgrading from $installedVersion to $latestVersion"
+        }
     }
-    catch {
-        Write-Host " $($c.Red)Failed$($c.NC)"
-        Write-Status "error" "Download failed: $_"
-        Write-Status "info" "Make sure a release exists at: $ExeUrl"
-        Write-Log "ERROR: Download failed - $_"
-        throw
+
+    if (-not $skipDownload) {
+        # Download
+        Write-Status "step" "Fetching fcf from GitHub Releases..."
+        Write-Progress-Custom "  Downloading fcf.exe"
+        Write-Log "Downloading from: $ExeUrl"
+
+        try {
+            Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
+            Write-ProgressDone
+            Write-Log "Download successful"
+        }
+        catch {
+            Write-Host " $($c.Red)Failed$($c.NC)"
+            Write-Status "error" "Download failed: $_"
+            Write-Status "info" "Make sure a release exists at: $ExeUrl"
+            Write-Log "ERROR: Download failed - $_"
+            throw
+        }
     }
 
     # Add to PATH via environment variable
@@ -355,22 +405,41 @@ function Install-System {
     Write-ProgressDone
     Write-Log "Created/Verified directory: $BinDir"
 
-    # Download
-    Write-Status "step" "Fetching fcf from GitHub Releases..."
-    Write-Progress-Custom "  Downloading fcf.exe"
-    Write-Log "Downloading from: $ExeUrl"
+    # Version check - skip download if already up to date
+    $installedVersion = Get-InstalledVersion -ExePath $InstallPath
+    $latestVersion = Get-LatestVersion
+    $skipDownload = $false
 
-    try {
-        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
-        Write-ProgressDone
-        Write-Log "Download successful"
+    if ($installedVersion -and $latestVersion) {
+        if ($installedVersion -eq $latestVersion) {
+            Write-Status "ok" "fcf is already up to date (v$installedVersion)"
+            Write-Log "Skipped download - already at latest version $installedVersion"
+            $skipDownload = $true
+        }
+        else {
+            Write-Status "info" "Upgrading from v$installedVersion to v$latestVersion"
+            Write-Log "Upgrading from $installedVersion to $latestVersion"
+        }
     }
-    catch {
-        Write-Host " $($c.Red)Failed$($c.NC)"
-        Write-Status "error" "Download failed: $_"
-        Write-Status "info" "Make sure a release exists at: $ExeUrl"
-        Write-Log "ERROR: Download failed - $_"
-        throw
+
+    if (-not $skipDownload) {
+        # Download
+        Write-Status "step" "Fetching fcf from GitHub Releases..."
+        Write-Progress-Custom "  Downloading fcf.exe"
+        Write-Log "Downloading from: $ExeUrl"
+
+        try {
+            Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
+            Write-ProgressDone
+            Write-Log "Download successful"
+        }
+        catch {
+            Write-Host " $($c.Red)Failed$($c.NC)"
+            Write-Status "error" "Download failed: $_"
+            Write-Status "info" "Make sure a release exists at: $ExeUrl"
+            Write-Log "ERROR: Download failed - $_"
+            throw
+        }
     }
 
     # Add to system PATH

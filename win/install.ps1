@@ -25,6 +25,9 @@ $ExeUrl = "https://github.com/$GitHubUser/$GitHubRepo/releases/latest/download/f
 $LogDir = Join-Path $env:USERPROFILE ".fcf"
 $LogFile = Join-Path $LogDir "install.log"
 
+# Track if fd was installed during this session (for PATH refresh)
+$script:FdWasInstalled = $false
+
 # Enable ANSI colors (PSStyle only exists in PowerShell 7.2+)
 if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
     $PSStyle.OutputRendering = 'Ansi'
@@ -122,54 +125,34 @@ function Write-Step {
 }
 
 function Test-FdInstalled {
-    $null -ne (Get-Command fd -ErrorAction SilentlyContinue)
-}
-
-function Get-PackageManager {
-    # Check for available package managers
-    $managers = @()
-
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        $managers += "winget"
+    try {
+        $null = fd --version 2>&1
+        return $LASTEXITCODE -eq 0
     }
-    if (Get-Command choco -ErrorAction SilentlyContinue) {
-        $managers += "choco"
+    catch {
+        return $false
     }
-    if (Get-Command scoop -ErrorAction SilentlyContinue) {
-        $managers += "scoop"
-    }
-
-    return $managers
 }
 
 function Install-Fd {
-    param([string]$PackageManager)
-
     Write-Status "step" "Installing fd (fast file finder)..."
-    Write-Log "Installing fd using $PackageManager"
+    Write-Log "Installing fd using winget"
 
     try {
-        switch ($PackageManager) {
-            "winget" {
-                winget install sharkdp.fd --accept-source-agreements --accept-package-agreements 2>$null
-                return $true
-            }
-            "choco" {
-                choco install fd -y 2>$null
-                return $true
-            }
-            "scoop" {
-                scoop install fd 2>$null
-                return $true
-            }
+        winget install sharkdp.fd --accept-source-agreements --accept-package-agreements
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "winget install completed successfully"
+            return $true
+        }
+        else {
+            Write-Log "winget install failed with exit code: $LASTEXITCODE"
+            return $false
         }
     }
     catch {
         Write-Log "Failed to install fd: $_"
         return $false
     }
-
-    return $false
 }
 
 function Add-ToProfile {
@@ -453,52 +436,24 @@ else {
     Write-Status "warn" "fd not found (fcf will use slower filepath.WalkDir)"
     Write-Log "fd: not installed"
 
-    $packageManagers = Get-PackageManager
-
-    if ($packageManagers.Count -gt 0) {
+    # Check if winget is available
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "  $($c.Cyan)fd$($c.NC) enables $($c.Bold)5-10x faster$($c.NC) parallel file searching."
-        Write-Host "  Available package managers: $($c.Green)$($packageManagers -join ', ')$($c.NC)"
         Write-Host ""
 
-        $installChoice = Read-Host "  Install fd now? [Y/n]"
+        $installChoice = Read-Host "  Install fd now using winget? [Y/n]"
 
         if ($installChoice -match "^[Yy]?$") {
-            # Use the first available package manager
-            $selectedManager = $packageManagers[0]
-
-            if ($packageManagers.Count -gt 1) {
-                Write-Host ""
-                Write-Host "  Select package manager:"
-                for ($i = 0; $i -lt $packageManagers.Count; $i++) {
-                    Write-Host "    [$($i + 1)] $($packageManagers[$i])"
-                }
-                $managerChoice = Read-Host "  Choice (default: 1)"
-
-                if ([string]::IsNullOrEmpty($managerChoice)) {
-                    $managerChoice = "1"
-                }
-
-                $idx = [int]$managerChoice - 1
-                if ($idx -ge 0 -and $idx -lt $packageManagers.Count) {
-                    $selectedManager = $packageManagers[$idx]
-                }
-            }
-
-            if (Install-Fd -PackageManager $selectedManager) {
-                if (Test-FdInstalled) {
-                    Write-Status "ok" "fd installed successfully"
-                    Write-Log "fd: installed successfully"
-                }
-                else {
-                    Write-Status "warn" "fd installation may require restart"
-                    Write-Log "fd: installation completed, may need restart"
-                }
+            if (Install-Fd) {
+                $script:FdWasInstalled = $true
+                Write-Status "ok" "fd installation completed"
+                Write-Log "fd: installation completed"
             }
             else {
-                Write-Status "warn" "Could not install fd automatically"
+                Write-Status "error" "fd installation failed"
                 Write-Status "info" "Install manually: $($c.Cyan)winget install sharkdp.fd$($c.NC)"
-                Write-Log "fd: auto-install failed"
+                Write-Log "fd: installation failed"
             }
         }
         else {
@@ -508,9 +463,9 @@ else {
         }
     }
     else {
-        Write-Status "info" "No package manager found (winget, choco, scoop)"
+        Write-Status "info" "winget not found"
         Write-Status "info" "Install fd manually from: $($c.Cyan)https://github.com/sharkdp/fd$($c.NC)"
-        Write-Log "fd: no package manager available"
+        Write-Log "fd: winget not available"
     }
 }
 
@@ -529,6 +484,9 @@ Write-Host "$($c.Bold)Features:$($c.NC)"
 if (Test-FdInstalled) {
     Write-Host "  $($c.Green)✓$($c.NC) Fast parallel search (fd)"
 }
+elseif ($script:FdWasInstalled) {
+    Write-Host "  $($c.Green)✓$($c.NC) Fast parallel search (fd) - installed, activating..."
+}
 else {
     Write-Host "  $($c.Yellow)○$($c.NC) Fast parallel search (install fd for boost)"
 }
@@ -544,3 +502,24 @@ Write-Host ""
 Write-Log "========================================="
 Write-Log "FCF Installation Finished Successfully"
 Write-Log "========================================="
+
+# Refresh PATH if fd was installed (so it's immediately available without restart)
+if ($script:FdWasInstalled) {
+    Write-Host ""
+    Write-Status "info" "Refreshing PATH to enable fd..."
+    Write-Log "Refreshing PATH environment variable"
+
+    # Reload PATH from registry (picks up winget's changes)
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+    # Verify fd is now available
+    if (Test-FdInstalled) {
+        Write-Status "ok" "fd is now available!"
+        fd --version
+        Write-Log "fd verified working after PATH refresh"
+    }
+    else {
+        Write-Status "warn" "fd not detected - you may need to restart PowerShell manually"
+        Write-Log "fd not found after PATH refresh"
+    }
+}

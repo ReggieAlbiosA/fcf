@@ -1,6 +1,9 @@
 name: Build FCF
 
 on:
+  push:
+    branches:
+      - '**'  # Trigger on push to any branch
   release:
     types: [created]
   workflow_dispatch:  # Manual trigger from GitHub UI

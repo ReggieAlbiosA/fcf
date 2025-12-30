@@ -5,6 +5,23 @@ All notable changes to FCF (Find File or Folder) will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2024-12-30
+
+### Fixed
+- **fd auto-installation** - Now properly detects installation success using `fd --version` and checks exit code
+- **False success messages** - Installer no longer reports "fd installed" when installation actually failed
+
+### Added
+- **PATH auto-refresh** - After fd installation, PATH is refreshed automatically (no manual PowerShell restart needed)
+- **Version check** - Installer skips download if same version already installed ("fcf is already up to date")
+- **CI push trigger** - GitHub Actions now triggers on push to any branch for testing
+
+### Changed
+- Simplified fd installation to use winget only (most common on Windows)
+- Removed package manager selection prompt (was overly complex)
+
+---
+
 ## [2.0.0] - 2024-12-30
 
 ### Added

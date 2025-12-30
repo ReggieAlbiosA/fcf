@@ -25,6 +25,9 @@ $ExeUrl = "https://github.com/$GitHubUser/$GitHubRepo/releases/latest/download/f
 $LogDir = Join-Path $env:USERPROFILE ".fcf"
 $LogFile = Join-Path $LogDir "install.log"
 
+# Track if fd was installed during this session (for PATH refresh)
+$script:FdWasInstalled = $false
+
 # Enable ANSI colors (PSStyle only exists in PowerShell 7.2+)
 if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
     $PSStyle.OutputRendering = 'Ansi'
@@ -122,54 +125,65 @@ function Write-Step {
 }
 
 function Test-FdInstalled {
-    $null -ne (Get-Command fd -ErrorAction SilentlyContinue)
+    try {
+        $null = fd --version 2>&1
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
 }
 
-function Get-PackageManager {
-    # Check for available package managers
-    $managers = @()
+function Get-InstalledVersion {
+    param([string]$ExePath)
 
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        $managers += "winget"
-    }
-    if (Get-Command choco -ErrorAction SilentlyContinue) {
-        $managers += "choco"
-    }
-    if (Get-Command scoop -ErrorAction SilentlyContinue) {
-        $managers += "scoop"
+    if (-not (Test-Path $ExePath)) {
+        return $null
     }
 
-    return $managers
+    try {
+        $output = & $ExePath -h 2>&1 | Select-Object -First 1
+        # Parse "fcf - Find File or Folder v2.0.0" -> "2.0.0"
+        if ($output -match 'v(\d+\.\d+\.\d+)') {
+            return $matches[1]
+        }
+    }
+    catch {
+        return $null
+    }
+    return $null
+}
+
+function Get-LatestVersion {
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubUser/$GitHubRepo/releases/latest" -UseBasicParsing
+        # Tag is like "v2.0.1" -> "2.0.1"
+        return $release.tag_name -replace '^v', ''
+    }
+    catch {
+        return $null
+    }
 }
 
 function Install-Fd {
-    param([string]$PackageManager)
-
     Write-Status "step" "Installing fd (fast file finder)..."
-    Write-Log "Installing fd using $PackageManager"
+    Write-Log "Installing fd using winget"
 
     try {
-        switch ($PackageManager) {
-            "winget" {
-                winget install sharkdp.fd --accept-source-agreements --accept-package-agreements 2>$null
-                return $true
-            }
-            "choco" {
-                choco install fd -y 2>$null
-                return $true
-            }
-            "scoop" {
-                scoop install fd 2>$null
-                return $true
-            }
+        winget install sharkdp.fd --accept-source-agreements --accept-package-agreements
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "winget install completed successfully"
+            return $true
+        }
+        else {
+            Write-Log "winget install failed with exit code: $LASTEXITCODE"
+            return $false
         }
     }
     catch {
         Write-Log "Failed to install fd: $_"
         return $false
     }
-
-    return $false
 }
 
 function Add-ToProfile {
@@ -275,22 +289,41 @@ function Install-User {
     Write-ProgressDone
     Write-Log "Created/Verified directory: $BinDir"
 
-    # Download
-    Write-Status "step" "Fetching fcf from GitHub Releases..."
-    Write-Progress-Custom "  Downloading fcf.exe"
-    Write-Log "Downloading from: $ExeUrl"
+    # Version check - skip download if already up to date
+    $installedVersion = Get-InstalledVersion -ExePath $InstallPath
+    $latestVersion = Get-LatestVersion
+    $skipDownload = $false
 
-    try {
-        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
-        Write-ProgressDone
-        Write-Log "Download successful"
+    if ($installedVersion -and $latestVersion) {
+        if ($installedVersion -eq $latestVersion) {
+            Write-Status "ok" "fcf is already up to date (v$installedVersion)"
+            Write-Log "Skipped download - already at latest version $installedVersion"
+            $skipDownload = $true
+        }
+        else {
+            Write-Status "info" "Upgrading from v$installedVersion to v$latestVersion"
+            Write-Log "Upgrading from $installedVersion to $latestVersion"
+        }
     }
-    catch {
-        Write-Host " $($c.Red)Failed$($c.NC)"
-        Write-Status "error" "Download failed: $_"
-        Write-Status "info" "Make sure a release exists at: $ExeUrl"
-        Write-Log "ERROR: Download failed - $_"
-        throw
+
+    if (-not $skipDownload) {
+        # Download
+        Write-Status "step" "Fetching fcf from GitHub Releases..."
+        Write-Progress-Custom "  Downloading fcf.exe"
+        Write-Log "Downloading from: $ExeUrl"
+
+        try {
+            Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
+            Write-ProgressDone
+            Write-Log "Download successful"
+        }
+        catch {
+            Write-Host " $($c.Red)Failed$($c.NC)"
+            Write-Status "error" "Download failed: $_"
+            Write-Status "info" "Make sure a release exists at: $ExeUrl"
+            Write-Log "ERROR: Download failed - $_"
+            throw
+        }
     }
 
     # Add to PATH via environment variable
@@ -372,22 +405,41 @@ function Install-System {
     Write-ProgressDone
     Write-Log "Created/Verified directory: $BinDir"
 
-    # Download
-    Write-Status "step" "Fetching fcf from GitHub Releases..."
-    Write-Progress-Custom "  Downloading fcf.exe"
-    Write-Log "Downloading from: $ExeUrl"
+    # Version check - skip download if already up to date
+    $installedVersion = Get-InstalledVersion -ExePath $InstallPath
+    $latestVersion = Get-LatestVersion
+    $skipDownload = $false
 
-    try {
-        Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
-        Write-ProgressDone
-        Write-Log "Download successful"
+    if ($installedVersion -and $latestVersion) {
+        if ($installedVersion -eq $latestVersion) {
+            Write-Status "ok" "fcf is already up to date (v$installedVersion)"
+            Write-Log "Skipped download - already at latest version $installedVersion"
+            $skipDownload = $true
+        }
+        else {
+            Write-Status "info" "Upgrading from v$installedVersion to v$latestVersion"
+            Write-Log "Upgrading from $installedVersion to $latestVersion"
+        }
     }
-    catch {
-        Write-Host " $($c.Red)Failed$($c.NC)"
-        Write-Status "error" "Download failed: $_"
-        Write-Status "info" "Make sure a release exists at: $ExeUrl"
-        Write-Log "ERROR: Download failed - $_"
-        throw
+
+    if (-not $skipDownload) {
+        # Download
+        Write-Status "step" "Fetching fcf from GitHub Releases..."
+        Write-Progress-Custom "  Downloading fcf.exe"
+        Write-Log "Downloading from: $ExeUrl"
+
+        try {
+            Invoke-WebRequest -Uri $ExeUrl -OutFile $InstallPath -UseBasicParsing
+            Write-ProgressDone
+            Write-Log "Download successful"
+        }
+        catch {
+            Write-Host " $($c.Red)Failed$($c.NC)"
+            Write-Status "error" "Download failed: $_"
+            Write-Status "info" "Make sure a release exists at: $ExeUrl"
+            Write-Log "ERROR: Download failed - $_"
+            throw
+        }
     }
 
     # Add to system PATH
@@ -453,52 +505,24 @@ else {
     Write-Status "warn" "fd not found (fcf will use slower filepath.WalkDir)"
     Write-Log "fd: not installed"
 
-    $packageManagers = Get-PackageManager
-
-    if ($packageManagers.Count -gt 0) {
+    # Check if winget is available
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "  $($c.Cyan)fd$($c.NC) enables $($c.Bold)5-10x faster$($c.NC) parallel file searching."
-        Write-Host "  Available package managers: $($c.Green)$($packageManagers -join ', ')$($c.NC)"
         Write-Host ""
 
-        $installChoice = Read-Host "  Install fd now? [Y/n]"
+        $installChoice = Read-Host "  Install fd now using winget? [Y/n]"
 
         if ($installChoice -match "^[Yy]?$") {
-            # Use the first available package manager
-            $selectedManager = $packageManagers[0]
-
-            if ($packageManagers.Count -gt 1) {
-                Write-Host ""
-                Write-Host "  Select package manager:"
-                for ($i = 0; $i -lt $packageManagers.Count; $i++) {
-                    Write-Host "    [$($i + 1)] $($packageManagers[$i])"
-                }
-                $managerChoice = Read-Host "  Choice (default: 1)"
-
-                if ([string]::IsNullOrEmpty($managerChoice)) {
-                    $managerChoice = "1"
-                }
-
-                $idx = [int]$managerChoice - 1
-                if ($idx -ge 0 -and $idx -lt $packageManagers.Count) {
-                    $selectedManager = $packageManagers[$idx]
-                }
-            }
-
-            if (Install-Fd -PackageManager $selectedManager) {
-                if (Test-FdInstalled) {
-                    Write-Status "ok" "fd installed successfully"
-                    Write-Log "fd: installed successfully"
-                }
-                else {
-                    Write-Status "warn" "fd installation may require restart"
-                    Write-Log "fd: installation completed, may need restart"
-                }
+            if (Install-Fd) {
+                $script:FdWasInstalled = $true
+                Write-Status "ok" "fd installation completed"
+                Write-Log "fd: installation completed"
             }
             else {
-                Write-Status "warn" "Could not install fd automatically"
+                Write-Status "error" "fd installation failed"
                 Write-Status "info" "Install manually: $($c.Cyan)winget install sharkdp.fd$($c.NC)"
-                Write-Log "fd: auto-install failed"
+                Write-Log "fd: installation failed"
             }
         }
         else {
@@ -508,9 +532,9 @@ else {
         }
     }
     else {
-        Write-Status "info" "No package manager found (winget, choco, scoop)"
+        Write-Status "info" "winget not found"
         Write-Status "info" "Install fd manually from: $($c.Cyan)https://github.com/sharkdp/fd$($c.NC)"
-        Write-Log "fd: no package manager available"
+        Write-Log "fd: winget not available"
     }
 }
 
@@ -529,6 +553,9 @@ Write-Host "$($c.Bold)Features:$($c.NC)"
 if (Test-FdInstalled) {
     Write-Host "  $($c.Green)✓$($c.NC) Fast parallel search (fd)"
 }
+elseif ($script:FdWasInstalled) {
+    Write-Host "  $($c.Green)✓$($c.NC) Fast parallel search (fd) - installed, activating..."
+}
 else {
     Write-Host "  $($c.Yellow)○$($c.NC) Fast parallel search (install fd for boost)"
 }
@@ -544,3 +571,24 @@ Write-Host ""
 Write-Log "========================================="
 Write-Log "FCF Installation Finished Successfully"
 Write-Log "========================================="
+
+# Refresh PATH if fd was installed (so it's immediately available without restart)
+if ($script:FdWasInstalled) {
+    Write-Host ""
+    Write-Status "info" "Refreshing PATH to enable fd..."
+    Write-Log "Refreshing PATH environment variable"
+
+    # Reload PATH from registry (picks up winget's changes)
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+    # Verify fd is now available
+    if (Test-FdInstalled) {
+        Write-Status "ok" "fd is now available!"
+        fd --version
+        Write-Log "fd verified working after PATH refresh"
+    }
+    else {
+        Write-Status "warn" "fd not detected - you may need to restart PowerShell manually"
+        Write-Log "fd not found after PATH refresh"
+    }
+}

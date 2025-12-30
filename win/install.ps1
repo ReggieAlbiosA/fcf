@@ -26,8 +26,8 @@ $ScriptUrl = "https://raw.githubusercontent.com/$GitHubUser/$GitHubRepo/refs/hea
 $LogDir = Join-Path $env:USERPROFILE ".fcf"
 $LogFile = Join-Path $LogDir "install.log"
 
-# Enable ANSI colors
-if ($PSVersionTable.PSVersion.Major -ge 7 -or $env:WT_SESSION) {
+# Enable ANSI colors (PSStyle only exists in PowerShell 7.2+)
+if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
     $PSStyle.OutputRendering = 'Ansi'
 }
 

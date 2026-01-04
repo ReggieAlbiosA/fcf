@@ -322,17 +322,16 @@ install_system() {
     print_status "info" "Available to all users"
 }
 
-# Automatic installation to both locations
-print_step "Installing to User & System Locations"
-echo ""
-log "Installing to both user and system directories"
-
-# Install to user directory
-install_user
-echo ""
-
-# Install to system directory
-install_system
+# Detect if running as root/sudo
+if [[ $EUID -eq 0 ]] || [[ -n "$SUDO_USER" ]]; then
+    # Running as root or with sudo - install system-wide only
+    log "Detected root/sudo execution - installing system-wide"
+    install_system
+else
+    # Running as regular user - install to user directory only
+    log "Detected regular user execution - installing to user directory"
+    install_user
+fi
 
 # Check for fd (optional fast search dependency)
 echo ""
@@ -403,6 +402,19 @@ echo -e "  ${GREEN}✓${NC} Pattern matching (glob, regex)"
 echo ""
 
 print_status "info" "Installation log: ${CYAN}$LOG_FILE${NC}"
+echo ""
+
+# Warning about shell integration
+echo -e "${BOLD}${YELLOW}Important:${NC}"
+if [[ $EUID -eq 0 ]] || [[ -n "$SUDO_USER" ]]; then
+    echo -e "  ${YELLOW}•${NC} System-wide installation complete"
+    echo -e "  ${YELLOW}•${NC} Command available as: ${BOLD}${GREEN}fcf${NC}"
+else
+    echo -e "  ${YELLOW}•${NC} User installation complete"
+    echo -e "  ${YELLOW}•${NC} Run: ${BOLD}source ~/.bashrc${NC} to use fcf in current session"
+fi
+echo -e "  ${YELLOW}•${NC} Remove any old fcf functions or aliases from ~/.bashrc"
+echo -e "  ${YELLOW}•${NC} The installed fcf command is ready to use directly"
 echo ""
 
 log "========================================="

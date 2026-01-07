@@ -5,6 +5,46 @@ All notable changes to FCF (Find File or Folder) will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] – 2026-01-07
+
+### Fixed
+- **GitHub Actions Windows build paths**  
+  Corrected workflow paths after Go source reorganization (win/go → go) to ensure Windows binaries are built and uploaded correctly.
+
+- **Temporary navigation file conflicts**  
+  Standardized navigation path to /tmp/fcf_nav_path, preventing permission and multi-user conflicts on Linux.
+
+- **System installation reliability**  
+  Installer now explicitly uses sudo when installing to system directories, avoiding silent permission failures.
+
+### Changed
+- **Go project structure**  
+  Unified Go source location by moving Windows Go files from win/go/ to go/ for cleaner cross-platform maintenance.
+
+- **Linux navigation handling**  
+  Simplified navigation logic by removing root/sudo detection and related warning indicators.
+
+- **Installer behavior (Linux)**  
+  Installation now runs both user-level and system-level installs automatically, instead of branching based on root detection.
+
+- **Shell integration responsibility**  
+  Removed automatic shell wrapper injection from the installer; shell integration is now documented and user-managed.
+
+- **Output cleanliness**  
+  Removed sudo-lock indicators (🔒) and related legends for clearer search output.
+
+### Removed
+- Root/sudo detection logic from [fcf.sh](http://fcf.sh)
+- Permission-check helpers and sudo navigation warnings
+- Automatic shell function injection into .bashrc / .zshrc
+
+### Internal
+- Refactored path handling to always resolve absolute paths before navigation
+- Reduced installer complexity by eliminating conditional execution paths
+- Improved consistency between CI, installer, and runtime behavior
+
+---
+
 ## [2.0.1] - 2024-12-30
 
 ### Fixed

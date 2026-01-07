@@ -229,6 +229,38 @@ install_user() {
         log "$BIN_DIR already in PATH"
     fi
 
+    # Add shell wrapper function for navigation
+    add_shell_function() {
+        local PROFILE_FILE="$1"
+
+        if grep -q "function fcf\|fcf()" "$PROFILE_FILE" 2>/dev/null; then
+            print_status "info" "fcf shell function already exists in $(basename $PROFILE_FILE)"
+            return 0
+        fi
+
+        cat >> "$PROFILE_FILE" << 'WRAPPER'
+
+# Added by fcf installer - enables directory navigation
+fcf() {
+    command fcf "$@"
+    local nav_path="$HOME/.fcf_nav_path"
+    if [[ -f "$nav_path" ]]; then
+        cd "$(cat "$nav_path")"
+        rm -f "$nav_path"
+    fi
+}
+WRAPPER
+        print_status "ok" "Added fcf shell function to $(basename $PROFILE_FILE)"
+    }
+
+    # Add to user's shell profile
+    if [ -f "$HOME/.bashrc" ]; then
+        add_shell_function "$HOME/.bashrc"
+    fi
+    if [ -f "$HOME/.zshrc" ]; then
+        add_shell_function "$HOME/.zshrc"
+    fi
+
     echo ""
     if [ "$IS_UPDATE" = true ]; then
         print_status "ok" "fcf upgraded successfully"
@@ -264,8 +296,6 @@ install_system() {
     fi
 
     log "Installation Location: $BIN_DIR"
-    print_status "warn" "Root privileges required"
-    log "Requesting sudo privileges"
 
     # Download to temp
     TMP_FILE=$(mktemp)
@@ -301,12 +331,12 @@ install_system() {
         exit 1
     fi
 
-    # Install with sudo
-    progress "Setting up fcf (requires sudo)"
-    sudo mv "$TMP_FILE" "$BIN_DIR/fcf"
-    sudo chmod +x "$BIN_DIR/fcf"
+    # Install to system directory (already running as root)
+    progress "Setting up fcf"
+    mv "$TMP_FILE" "$BIN_DIR/fcf"
+    chmod +x "$BIN_DIR/fcf"
     progress_done
-    log "Moved to system bin with sudo"
+    log "Moved to system bin"
     log "Made executable: $BIN_DIR/fcf"
 
     echo ""
@@ -322,17 +352,20 @@ install_system() {
     print_status "info" "Available to all users"
 }
 
-# Automatic installation to both locations
-print_step "Installing to User & System Locations"
-echo ""
-log "Installing to both user and system directories"
-
-# Install to user directory
-install_user
-echo ""
-
-# Install to system directory
-install_system
+# Detect if running as root/sudo
+if [[ $EUID -eq 0 ]]; then
+    # Running as root - system-wide installation
+    print_step "System-Wide Installation (running as root)"
+    echo ""
+    log "Installing to system directory (running as root)"
+    install_system
+else
+    # Running as regular user - user installation only
+    print_step "User Installation"
+    echo ""
+    log "Installing to user directory"
+    install_user
+fi
 
 # Check for fd (optional fast search dependency)
 echo ""

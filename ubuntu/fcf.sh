@@ -22,8 +22,17 @@ TYPE_FILTER=""
 SHOW_SIZE=false
 MAX_DISPLAY=0  # 0 = unlimited
 
+# Check if running as root/sudo
+IS_ROOT=false
+if [[ $EUID -eq 0 ]]; then
+    IS_ROOT=true
+fi
+
+# Use user-specific temp file for navigation (avoids permission conflicts)
+FCF_NAV_PATH="${HOME}/.fcf_nav_path"
+
 # Clean up any stale navigation path on start
-rm -f /tmp/fcf_nav_path
+rm -f "$FCF_NAV_PATH" 2>/dev/null || true
 
 # Store results for navigation
 declare -a RESULTS=()
@@ -53,9 +62,9 @@ ${BOLD}SHELL INTEGRATION (for navigation to work):${NC}
 
     ${YELLOW}fcf() {
         /path/to/fcf.sh "\$@"
-        if [[ -f /tmp/fcf_nav_path ]]; then
-            cd "\$(cat /tmp/fcf_nav_path)"
-            rm -f /tmp/fcf_nav_path
+        if [[ -f \$HOME/.fcf_nav_path ]]; then
+            cd "\$(cat \$HOME/.fcf_nav_path)"
+            rm -f \$HOME/.fcf_nav_path
         fi
     }${NC}
 
@@ -146,24 +155,45 @@ get_file_info() {
     echo "$size"
 }
 
+# Function to check if path requires sudo to access
+needs_sudo() {
+    local path=$1
+    # Get directory to check (for files, check parent dir)
+    local check_path="$path"
+    if [[ -f "$path" ]]; then
+        check_path=$(dirname "$path")
+    fi
+    # Check if we can access/cd into the directory
+    if [[ -d "$check_path" ]] && ! cd "$check_path" 2>/dev/null; then
+        return 0  # needs sudo
+    fi
+    return 1  # accessible
+}
+
 # Function to display a found item with styling
 display_result() {
     local file=$1
     local count=$2
     local info=$(get_file_info "$file")
+    local sudo_warning=""
+
+    # Check if path requires sudo (only show warning if not running as root)
+    if [[ "$IS_ROOT" == false ]] && needs_sudo "$file"; then
+        sudo_warning=" ${YELLOW}🔒${NC}"
+    fi
 
     if [[ -d "$file" ]]; then
         # Directory - blue with folder icon
-        echo -e "${CYAN}  [$count]${NC} ${BLUE}📁 $file/${NC}$info"
+        echo -e "${CYAN}  [$count]${NC} ${BLUE}📁 $file/${NC}$info$sudo_warning"
     elif [[ -x "$file" ]]; then
         # Executable - green
-        echo -e "${CYAN}  [$count]${NC} ${GREEN}⚡ $file${NC}$info"
+        echo -e "${CYAN}  [$count]${NC} ${GREEN}⚡ $file${NC}$info$sudo_warning"
     elif [[ -L "$file" ]]; then
         # Symlink - magenta
-        echo -e "${CYAN}  [$count]${NC} ${MAGENTA}🔗 $file${NC}$info"
+        echo -e "${CYAN}  [$count]${NC} ${MAGENTA}🔗 $file${NC}$info$sudo_warning"
     else
         # Regular file
-        echo -e "${CYAN}  [$count]${NC} 📄 $file$info"
+        echo -e "${CYAN}  [$count]${NC} 📄 $file$info$sudo_warning"
     fi
 }
 
@@ -237,11 +267,20 @@ navigate_to_path() {
         return 1
     fi
 
-    # Get absolute path
-    target_path=$(cd "$target_path" 2>/dev/null && pwd)
+    # Try to get absolute path
+    local abs_path=$(cd "$target_path" 2>/dev/null && pwd)
+
+    # Check if we could access the directory
+    if [[ -z "$abs_path" ]]; then
+        echo -e "${RED}ERROR:${NC} Cannot access '${CYAN}$target_path${NC}'"
+        echo -e "${YELLOW}🔒 This path requires sudo.${NC} Run: ${BOLD}sudo fcf${NC}"
+        return 1
+    fi
+
+    target_path="$abs_path"
 
     # Save path to temp file for shell integration
-    echo "$target_path" > /tmp/fcf_nav_path
+    echo "$target_path" > "$FCF_NAV_PATH"
 
     echo -e "${GREEN}✓ Will navigate to:${NC} ${CYAN}$target_path${NC}"
     echo ""
@@ -410,6 +449,9 @@ while true; do
 
         ((count++))
 
+        # Strip trailing slash for cleaner paths
+        file="${file%/}"
+
         # Store result for navigation
         RESULTS+=("$file")
 
@@ -460,6 +502,11 @@ while true; do
 
         if [[ $MAX_DISPLAY -gt 0 ]] && [[ $count -gt $MAX_DISPLAY ]]; then
             echo -e "${YELLOW}(Displayed first $MAX_DISPLAY of $count)${NC}"
+        fi
+
+        # Show legend for sudo-protected paths (only if not running as root)
+        if [[ "$IS_ROOT" == false ]]; then
+            echo -e "${DIM}${YELLOW}🔒${NC}${DIM} = requires sudo to navigate${NC}"
         fi
     fi
 

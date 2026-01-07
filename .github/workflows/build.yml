@@ -34,7 +34,7 @@ jobs:
           go build -o fcf.exe -ldflags="-s -w"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fcf-windows
           path: win/go/fcf.exe

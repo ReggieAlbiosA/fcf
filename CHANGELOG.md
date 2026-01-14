@@ -5,6 +5,35 @@ All notable changes to FCF (Find File or Folder) will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-14
+
+### Added
+- **Unified cross-platform codebase** - Single Go implementation for Linux, macOS, and Windows
+- **Self-installing binary** - New `fcf install` command for automated system-wide installation
+- **Linux distro detection** - Automatic detection via /etc/os-release for distro-specific behavior
+- **fdfind alias support** - Automatic support for Debian/Ubuntu's fdfind package naming
+- **Platform-aware help text** - Installation instructions adapt to the current operating system
+- **Multi-platform CI/CD** - GitHub Actions builds for 5 targets: linux/amd64, darwin/amd64, darwin/arm64, windows/amd64, windows/386
+
+### Changed
+- **Installation paths** - System-wide installation to /usr/local/bin (Unix) or C:\Program Files\fcf (Windows)
+- **Build architecture** - Introduced platform-specific build tags for Unix/Windows code paths
+- **Executable resolution** - Platform-aware handling for fd/fdfind executable detection
+- **File permissions** - Automatic executable bit setting on Unix systems during installation
+
+### Architecture
+- Separated platform-specific logic with build tags (+build unix/windows)
+- New files: distro_unix.go, distro_windows.go, executable_unix.go, executable_windows.go
+- Modular installation system: install.go, install_unix.go, install_windows.go
+- Updated display.go, search.go, main.go for cross-platform compatibility
+
+### Build System
+- Enhanced GitHub Actions workflow for multi-platform releases
+- Automated builds for Linux (amd64), macOS (amd64, arm64), Windows (amd64, 386)
+- Streamlined release artifact generation
+
+---
+
 ## [2.0.2] – 2026-01-07
 
 ### Fixed

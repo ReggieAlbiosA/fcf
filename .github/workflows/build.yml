@@ -2,18 +2,47 @@ name: Build FCF
 
 on:
   push:
-    branches:
-      - '**'  # Trigger on push to any branch
+    branches: ['**']
   release:
     types: [created]
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux builds (cross-compile from ubuntu-latest)
+          - goos: linux
+            goarch: amd64
+            artifact: fcf-linux-amd64
+            runner: ubuntu-latest
+          - goos: linux
+            goarch: arm64
+            artifact: fcf-linux-arm64
+            runner: ubuntu-latest
+
+          # macOS builds
+          - goos: darwin
+            goarch: amd64
+            artifact: fcf-darwin-amd64
+            runner: macos-latest
+          - goos: darwin
+            goarch: arm64
+            artifact: fcf-darwin-arm64
+            runner: macos-latest
+
+          # Windows build
+          - goos: windows
+            goarch: amd64
+            artifact: fcf-windows-amd64.exe
+            runner: windows-latest
+
+    runs-on: ${{ matrix.runner }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -29,20 +58,24 @@ jobs:
           go mod tidy
 
       - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
         run: |
           cd win/go
-          go build -o fcf.exe -ldflags="-s -w"
+          go build -o ${{ matrix.artifact }} -ldflags="-s -w"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: fcf-windows
-          path: win/go/fcf.exe
+          name: ${{ matrix.artifact }}
+          path: win/go/${{ matrix.artifact }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: win/go/fcf.exe
+          files: win/go/${{ matrix.artifact }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

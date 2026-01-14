@@ -9,10 +9,21 @@ import (
 	"strings"
 )
 
+// getFdCommand returns the fd command name if available
+// Checks for "fd" first (standard), then "fdfind" (Debian/Ubuntu package name)
+func getFdCommand() string {
+	if _, err := exec.LookPath("fd"); err == nil {
+		return "fd"
+	}
+	if _, err := exec.LookPath("fdfind"); err == nil {
+		return "fdfind"
+	}
+	return ""
+}
+
 // hasFd checks if fd is available in PATH
 func hasFd() bool {
-	_, err := exec.LookPath("fd")
-	return err == nil
+	return getFdCommand() != ""
 }
 
 // searchWithFd uses fd for fast parallel search
@@ -36,7 +47,7 @@ func searchWithFd(pattern, searchPath string, opts *Options) ([]string, error) {
 	// Glob pattern and path
 	args = append(args, "-g", pattern, searchPath)
 
-	cmd := exec.Command("fd", args...)
+	cmd := exec.Command(getFdCommand(), args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err

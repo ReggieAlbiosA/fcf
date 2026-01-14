@@ -1,0 +1,7 @@
+{
+  "name": "Fedora Codespace",
+  "image": "registry.fedoraproject.org/fedora:39",
+  "features": {},
+  "postCreateCommand": "dnf install -y curl git tar gzip",
+  "remoteUser": "root"
+}

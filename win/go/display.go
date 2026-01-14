@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
@@ -110,18 +109,6 @@ func showResult(filePath string, count int) {
 			filePath,
 			fileInfo)
 	}
-}
-
-// isExecutable checks if a file is executable (Windows: by extension)
-func isExecutable(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	execExts := []string{".exe", ".bat", ".cmd", ".ps1", ".com"}
-	for _, e := range execExts {
-		if ext == e {
-			return true
-		}
-	}
-	return false
 }
 
 // getFileInfo returns formatted file size info if ShowSize is enabled

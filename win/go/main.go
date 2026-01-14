@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -26,6 +27,12 @@ var opts Options
 var timeNow = time.Now
 
 func main() {
+	// Check for install subcommand first (before flag parsing)
+	if len(os.Args) > 1 && os.Args[1] == "install" {
+		runInstall()
+		return
+	}
+
 	// Clean up any stale navigation path on start
 	cleanupNavFile()
 
@@ -96,6 +103,7 @@ func showHelp() {
 	fmt.Println(colors.Bold("USAGE:"))
 	fmt.Println("    fcf [OPTIONS] [PATTERN] [PATH]")
 	fmt.Println("    fcf                          # Interactive mode")
+	fmt.Println("    fcf install                  # Install fcf system-wide")
 	fmt.Println()
 	fmt.Println(colors.Bold("DESCRIPTION:"))
 	fmt.Println("    Interactive tool to find files and folders with pattern matching")
@@ -109,17 +117,11 @@ func showHelp() {
 	fmt.Printf("    %s           Display file sizes\n", colors.Cyan("--show-size"))
 	fmt.Printf("    %s    Maximum results to display (default: unlimited)\n", colors.Cyan("--max-display NUM"))
 	fmt.Println()
-	fmt.Println(colors.Bold("SHELL INTEGRATION (for navigation to work):"))
-	fmt.Printf("    Add this to your %s:\n", colors.Cyan("$PROFILE"))
+	fmt.Println(colors.Bold("COMMANDS:"))
+	fmt.Printf("    %s              Install fcf to system (requires sudo/admin)\n", colors.Cyan("install"))
 	fmt.Println()
-	fmt.Println(colors.Yellow("    function fcf {"))
-	fmt.Println(colors.Yellow("        & \"$env:USERPROFILE\\.local\\bin\\fcf.exe\" @args"))
-	fmt.Println(colors.Yellow("        $navPath = \"$env:TEMP\\fcf_nav_path\""))
-	fmt.Println(colors.Yellow("        if (Test-Path $navPath) {"))
-	fmt.Println(colors.Yellow("            Set-Location (Get-Content $navPath)"))
-	fmt.Println(colors.Yellow("            Remove-Item $navPath -Force"))
-	fmt.Println(colors.Yellow("        }"))
-	fmt.Println(colors.Yellow("    }"))
+	fmt.Println(colors.Bold("SHELL INTEGRATION (for navigation to work):"))
+	showShellIntegrationHelp()
 	fmt.Println()
 	fmt.Println(colors.Bold("EXAMPLES:"))
 	fmt.Printf("    %s\n", colors.Green("# Interactive mode"))
@@ -129,7 +131,7 @@ func showHelp() {
 	fmt.Println("    fcf \"*.log\"")
 	fmt.Println()
 	fmt.Printf("    %s\n", colors.Green("# Find in specific directory"))
-	fmt.Println("    fcf \"*.js\" C:\\Projects")
+	showExamplePath()
 	fmt.Println()
 	fmt.Printf("    %s\n", colors.Green("# Case-insensitive search for PNG files"))
 	fmt.Println("    fcf -i \"*.PNG\"")
@@ -154,8 +156,51 @@ func showHelp() {
 	fmt.Println(colors.Bold("PERFORMANCE:"))
 	fmt.Println("    - Uses 'fd' for fast parallel searching (if installed)")
 	fmt.Println("    - Falls back to Go's filepath.WalkDir if fd is not available")
-	fmt.Printf("    - Install fd: %s\n", colors.Cyan("winget install sharkdp.fd"))
-	fmt.Printf("                  %s\n", colors.Cyan("choco install fd"))
-	fmt.Printf("                  %s\n", colors.Cyan("scoop install fd"))
+	fmt.Printf("    - Install fd: %s\n", colors.Cyan(getFdInstallHint()))
 	fmt.Println()
+}
+
+// showShellIntegrationHelp displays platform-specific shell integration instructions
+func showShellIntegrationHelp() {
+	if runtime.GOOS == "windows" {
+		fmt.Printf("    Add this to your %s:\n", colors.Cyan("$PROFILE"))
+		fmt.Println()
+		fmt.Println(colors.Yellow("    function fcf {"))
+		fmt.Println(colors.Yellow("        $navFile = Join-Path $env:TEMP \"fcf_nav_path\""))
+		fmt.Println(colors.Yellow("        if (Test-Path $navFile) { Remove-Item $navFile -Force }"))
+		fmt.Println(colors.Yellow("        & \"C:\\Program Files\\fcf\\fcf.exe\" @args"))
+		fmt.Println(colors.Yellow("        if (Test-Path $navFile) {"))
+		fmt.Println(colors.Yellow("            $target = Get-Content $navFile -Raw"))
+		fmt.Println(colors.Yellow("            Remove-Item $navFile -Force"))
+		fmt.Println(colors.Yellow("            if (Test-Path $target -PathType Container) {"))
+		fmt.Println(colors.Yellow("                Set-Location $target"))
+		fmt.Println(colors.Yellow("            }"))
+		fmt.Println(colors.Yellow("        }"))
+		fmt.Println(colors.Yellow("    }"))
+	} else {
+		fmt.Printf("    Add this to your %s or %s:\n", colors.Cyan("~/.bashrc"), colors.Cyan("~/.zshrc"))
+		fmt.Println()
+		fmt.Println(colors.Yellow("    fcf() {"))
+		fmt.Println(colors.Yellow("        local nav_file=\"/tmp/fcf_nav_path\""))
+		fmt.Println(colors.Yellow("        rm -f \"$nav_file\""))
+		fmt.Println(colors.Yellow("        command fcf \"$@\""))
+		fmt.Println(colors.Yellow("        if [[ -f \"$nav_file\" ]]; then"))
+		fmt.Println(colors.Yellow("            local target"))
+		fmt.Println(colors.Yellow("            target=$(cat \"$nav_file\")"))
+		fmt.Println(colors.Yellow("            rm -f \"$nav_file\""))
+		fmt.Println(colors.Yellow("            if [[ -d \"$target\" ]]; then"))
+		fmt.Println(colors.Yellow("                cd \"$target\" || return"))
+		fmt.Println(colors.Yellow("            fi"))
+		fmt.Println(colors.Yellow("        fi"))
+		fmt.Println(colors.Yellow("    }"))
+	}
+}
+
+// showExamplePath displays a platform-appropriate example path
+func showExamplePath() {
+	if runtime.GOOS == "windows" {
+		fmt.Println("    fcf \"*.js\" C:\\Projects")
+	} else {
+		fmt.Println("    fcf \"*.js\" ~/projects")
+	}
 }

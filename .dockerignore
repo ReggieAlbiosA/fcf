@@ -1,0 +1,7 @@
+.git
+.gitignore
+README.md
+LICENSE
+CHANGELOG.md
+SECURITY.md
+*.log

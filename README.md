@@ -22,29 +22,77 @@ Think of it as `find` with a friendly interface - interactive prompts, color-cod
 
 ### Installation
 
-#### Ubuntu/Linux
+FCF is a compiled Go binary with cross-platform support. Download the binary for your platform and run `fcf install` to auto-detect your shell and configure everything.
 
-Install with a single command:
+#### Linux
+
+**Option 1: System-wide installation (recommended)**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/install.sh | bash
+# Download binary for your architecture (amd64 is most common)
+curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
+chmod +x fcf
+
+# Install and configure (requires sudo)
+sudo ./fcf install
 ```
 
-The installer automatically installs to **both locations**:
-- **User:** `~/.local/bin/fcf` - Available for your user account
-- **System:** `/usr/local/bin/fcf` - Available for all users (requires sudo)
+**Option 2: User-only installation (no sudo required)**
+
+```bash
+# Download binary
+curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
+chmod +x fcf
+
+# Install for current user only
+./fcf install --user
+```
+
+#### macOS
+
+**Option 1: System-wide installation (recommended)**
+
+```bash
+# Download for your Mac architecture
+# Apple Silicon (M1/M2/M3):
+curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-arm64 -o fcf
+
+# OR Intel Mac:
+# curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-amd64 -o fcf
+
+chmod +x fcf
+
+# Install and configure (requires sudo)
+sudo ./fcf install
+```
+
+**Option 2: User-only installation (no sudo required)**
+
+```bash
+# Download for your Mac architecture (see above)
+chmod +x fcf
+
+# Install for current user only
+./fcf install --user
+```
 
 #### Windows (PowerShell)
 
-Run in PowerShell (as Administrator for system-wide install):
+Run PowerShell as Administrator:
 
 ```powershell
-irm https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/install.ps1 | iex
+# Download binary
+Invoke-WebRequest -Uri "https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe" -OutFile fcf.exe
+
+# Install and configure
+.\fcf.exe install
 ```
 
-The installer automatically installs to:
-- **User:** `%USERPROFILE%\.local\bin\fcf.ps1` - Available for your user account
-- **System:** `C:\Program Files\fcf\fcf.ps1` - Available for all users (requires Admin)
+The `fcf install` command automatically:
+- Detects your shell (bash, zsh, fish on Unix; PowerShell on Windows)
+- Adds the required shell wrapper function for navigation
+- Configures PATH if needed
+- Provides reload instructions
 
 ## Usage
 
@@ -235,95 +283,85 @@ fcf -H ".git*"
 
 ## Installation Details
 
-### Ubuntu/Linux
+### What Gets Installed
 
-#### User Installation
-- **Location:** `~/.local/bin/fcf`
-- **Available to:** Current user only
-- **Benefit:** Works without sudo, safe and isolated
+FCF is a **compiled Go binary** with automatic shell integration configuration.
 
-#### System-Wide Installation
-- **Location:** `/usr/local/bin/fcf`
-- **Requires:** sudo (installer will prompt)
-- **Available to:** All users on the system
+**Installed Binary:**
+- Linux/macOS: `~/.local/bin/fcf` (user) or `/usr/local/bin/fcf` (system)
+- Windows: `%USERPROFILE%\.local\bin\fcf.exe` (user) or `C:\Program Files\fcf\fcf.exe` (system)
 
-### Windows
+**Shell Configuration:**
+- Automatically detected: Bash, Zsh, Fish (Unix/Linux/macOS), PowerShell (Windows)
+- Wrapper function added to config file for directory navigation
+- Idempotent: Won't duplicate on reinstall
 
-#### User Installation
-- **Location:** `%USERPROFILE%\.local\bin\fcf.ps1`
-- **Available to:** Current user only
-- **Benefit:** Works without Administrator privileges
+### Installation Scopes
 
-#### System-Wide Installation
-- **Location:** `C:\Program Files\fcf\fcf.ps1`
-- **Requires:** Administrator privileges
-- **Available to:** All users on the system
+| Scope | Linux/macOS | Windows | Requires Sudo |
+|-------|-------------|---------|---------------|
+| **System-wide** | `/usr/local/bin/fcf` | `C:\Program Files\fcf\fcf.exe` | Yes |
+| **User-only** | `~/.local/bin/fcf` | `%USERPROFILE%\.local\bin\fcf.exe` | No |
+
+### Command Options
+
+```bash
+fcf install              # System-wide (requires sudo on Unix)
+fcf install --user      # User-only (no sudo required)
+fcf install --no-shell  # Binary only, skip shell integration
+fcf install --shell zsh # Force specific shell configuration
+```
+
+### Supported Shells
+
+| Shell | Config File | Platform | Auto-Detected |
+|-------|------------|----------|---------------|
+| Bash | `~/.bashrc` | Linux/macOS | Yes |
+| Bash | `~/.bash_profile` | macOS | Yes |
+| Zsh | `~/.zshrc` | Linux/macOS | Yes |
+| Fish | `~/.config/fish/config.fish` | Linux/macOS | Yes |
+| PowerShell | `$PROFILE` | Windows | Yes |
 
 ## Updating
 
-Re-run the installation command to update:
-
-### Ubuntu/Linux
-```bash
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/install.sh | bash
-```
-
-### Windows (PowerShell)
-```powershell
-irm https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/install.ps1 | iex
-```
-
-The installer will detect existing installation and upgrade automatically.
-
-## Manual Installation
-
-### Ubuntu/Linux
+To update to the latest version, re-download the binary and run `fcf install` again:
 
 ```bash
-# Download
-curl -sSL https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/ubuntu/fcf.sh -o fcf
-
-# Make executable
+# Linux/macOS
+curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
 chmod +x fcf
-
-# Move to PATH
-mv fcf ~/.local/bin/  # or /usr/local/bin with sudo
-
-# Add to PATH if needed
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+sudo ./fcf install       # or ./fcf install --user
 ```
-
-### Windows (PowerShell)
 
 ```powershell
-# Create directory
-New-Item -ItemType Directory -Path "$env:USERPROFILE\.local\bin" -Force
-
-# Download
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ReggieAlbiosA/fcf/refs/heads/main/win/fcf.ps1" -OutFile "$env:USERPROFILE\.local\bin\fcf.ps1"
-
-# Add to PATH (run as Administrator for system-wide)
-$path = [Environment]::GetEnvironmentVariable("Path", "User")
-[Environment]::SetEnvironmentVariable("Path", "$env:USERPROFILE\.local\bin;$path", "User")
-
-# Add shell function to your PowerShell profile
-Add-Content $PROFILE @'
-
-function fcf {
-    & "$env:USERPROFILE\.local\bin\fcf.ps1" @args
-    $navPath = "$env:TEMP\fcf_nav_path"
-    if (Test-Path $navPath) {
-        Set-Location (Get-Content $navPath)
-        Remove-Item $navPath -Force
-    }
-}
-'@
+# Windows
+Invoke-WebRequest -Uri "https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe" -OutFile fcf.exe
+.\fcf.exe install
 ```
+
+The installer detects your existing installation and updates the shell configuration if needed.
+
+## Available Binaries
+
+Pre-compiled binaries for all platforms are available on the [GitHub Releases](https://github.com/ReggieAlbiosA/fcf/releases) page.
+
+**Linux:**
+- `fcf-linux-amd64` - Intel/AMD 64-bit
+- `fcf-linux-arm64` - ARM 64-bit
+
+**macOS:**
+- `fcf-darwin-amd64` - Intel
+- `fcf-darwin-arm64` - Apple Silicon (M1/M2/M3)
+
+**Windows:**
+- `fcf-windows-amd64.exe` - 64-bit
+- `fcf-windows-386.exe` - 32-bit
+
+Download the appropriate binary for your platform and run `fcf install` to complete setup.
 
 ## Uninstallation
 
-### Ubuntu/Linux
+### Linux/macOS
 
 ```bash
 # User installation
@@ -332,87 +370,104 @@ rm ~/.local/bin/fcf
 # System-wide installation
 sudo rm /usr/local/bin/fcf
 
-# Remove logs
-rm -rf ~/.fcf
+# Optional: Remove shell integration from config files
+# Edit ~/.bashrc, ~/.zshrc, or ~/.config/fish/config.fish
+# and remove the fcf function block
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
 # User installation
-Remove-Item "$env:USERPROFILE\.local\bin\fcf.ps1" -Force
+Remove-Item "$env:USERPROFILE\.local\bin\fcf.exe" -Force
 
 # System-wide installation (as Administrator)
 Remove-Item "C:\Program Files\fcf" -Recurse -Force
 
-# Remove logs
-Remove-Item "$env:USERPROFILE\.fcf" -Recurse -Force
-
-# Optionally remove the fcf function from your profile
+# Optional: Remove shell integration from PowerShell profile
 # Edit $PROFILE and remove the fcf function block
 ```
 
+**Note:** Shell integration functions are marked with unique comments and can be safely removed manually. They won't interfere with FCF if you reinstall later.
+
 ## Troubleshooting
 
-### Ubuntu/Linux
+### General
 
-#### Command not found
+**Shell integration not working?**
+
+Reload your shell configuration after installation:
+
 ```bash
-source ~/.bashrc  # Reload shell config
-# or restart terminal
+# Bash
+source ~/.bashrc
+
+# Zsh
+source ~/.zshrc
+
+# Fish
+source ~/.config/fish/config.fish
+
+# PowerShell
+. $PROFILE
 ```
 
-#### Permission denied
+**Reinstall shell integration:**
+
 ```bash
-chmod +x ~/.local/bin/fcf
+# Manually reconfigure the installed shell
+fcf install --shell bash   # or zsh, fish
 ```
 
-#### Slow search
-Install `fd` for parallel searching:
+### Linux/macOS
+
+**Command not found after installation:**
+
+- For system-wide: Restart terminal or source your shell config
+- For user-only: Ensure `~/.local/bin` is in your PATH
+
+**Slow search:**
+
+Install `fd` for faster parallel searching:
+
 ```bash
-sudo apt install fd-find  # Debian/Ubuntu
+# Debian/Ubuntu
+sudo apt install fd-find
+
+# Fedora
+sudo dnf install fd-find
+
+# Arch
+sudo pacman -S fd
+
+# macOS
+brew install fd
 ```
 
 ### Windows
 
-#### Command not found
+**PowerShell profile not found:**
+
+Create it manually:
+
 ```powershell
-# Reload PowerShell profile
-. $PROFILE
-# or restart PowerShell
+New-Item -Path $PROFILE -ItemType File -Force
 ```
 
-#### Execution policy error
-```powershell
-# Run as Administrator
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+**Slow search:**
 
-#### Slow search
-Install `fd` for parallel searching:
+Install `fd` via package manager:
+
 ```powershell
 winget install sharkdp.fd
-# or
-choco install fd
-# or
-scoop install fd
 ```
 
-## Installation Logs
+## Support
 
-### Ubuntu/Linux
-All installations are logged to: `~/.fcf/install.log`
+For bug reports, feature requests, or questions:
 
-```bash
-cat ~/.fcf/install.log  # View installation history
-```
-
-### Windows
-All installations are logged to: `%USERPROFILE%\.fcf\install.log`
-
-```powershell
-Get-Content "$env:USERPROFILE\.fcf\install.log"  # View installation history
-```
+- GitHub Issues: [ReggieAlbiosA/fcf/issues](https://github.com/ReggieAlbiosA/fcf/issues)
+- GitHub Discussions: [ReggieAlbiosA/fcf/discussions](https://github.com/ReggieAlbiosA/fcf/discussions)
 
 ## Contributing
 
@@ -433,6 +488,29 @@ MIT License - see LICENSE file for details
 
 ## Changelog
 
+### v3.0.0+ (2026-01-14+)
+- **Major:** Unified cross-platform Go codebase
+- Consolidated all code to single Go project (Linux, macOS, Windows)
+- Platform-specific logic via Go build tags
+- **Enhanced `fcf install` command:**
+  - Auto-detects user's shell (Bash, Zsh, Fish, PowerShell)
+  - Automatically adds shell integration to config files
+  - Supports both user-scope and system-wide installation
+  - Idempotent: safe to run multiple times
+  - Optional manual shell override with `--shell` flag
+- Multi-platform CI/CD builds (5 platforms: Linux amd64/arm64, macOS Intel/Apple Silicon, Windows)
+- Linux distro detection via `/etc/os-release`
+- Automatic `fdfind` → `fd` alias support for Debian/Ubuntu
+- Simplified installation: Binary-only approach, no shell script installers needed
+- macOS support for both Intel and Apple Silicon
+
+### v2.0.0 (2024-12-30)
+- **Windows:** Rewritten in Go (replaces PowerShell script)
+- Fixed ANSI color rendering issues on Windows
+- Resolved PowerShell execution policy problems
+- GitHub Actions automated binary builds
+- Improved Windows terminal compatibility
+
 ### v1.0.0 (2024-12-28)
 - Initial release
 - Interactive 3-step workflow
@@ -441,7 +519,7 @@ MIT License - see LICENSE file for details
 - Navigation to results
 - Loop workflow (find again, repeat, exit)
 - Color-coded output with icons
-- APT-style installer
+- Shell-based implementation (Bash for Linux, PowerShell for Windows)
 
 ---
 

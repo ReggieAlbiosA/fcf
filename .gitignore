@@ -4,6 +4,7 @@
 # Go build artifacts
 *.exe
 go/fcf
+fcf
 
 # IDE
 .vscode/

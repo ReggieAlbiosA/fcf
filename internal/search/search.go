@@ -1,4 +1,4 @@
-package main
+package search
 
 import (
 	"bufio"
@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
 // getFdCommand returns the fd command name if available
@@ -22,12 +24,12 @@ func getFdCommand() string {
 }
 
 // hasFd checks if fd is available in PATH
-func hasFd() bool {
+func HasFd() bool {
 	return getFdCommand() != ""
 }
 
-// searchWithFd uses fd for fast parallel search
-func searchWithFd(pattern, searchPath string, opts *Options) ([]string, error) {
+// SearchWithFd uses fd for fast parallel search
+func SearchWithFd(pattern, searchPath string, opts *ui.Options) ([]string, error) {
 	args := []string{"--color", "never", "--hidden", "--no-ignore"}
 
 	// Type filter
@@ -72,7 +74,7 @@ func searchWithFd(pattern, searchPath string, opts *Options) ([]string, error) {
 
 		// Display result in real-time (streaming)
 		if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
-			showResult(line, count)
+			ui.ShowResult(line, count)
 		}
 	}
 
@@ -80,8 +82,8 @@ func searchWithFd(pattern, searchPath string, opts *Options) ([]string, error) {
 	return results, nil
 }
 
-// searchWithWalk uses filepath.WalkDir as fallback
-func searchWithWalk(pattern, searchPath string, opts *Options) ([]string, error) {
+// SearchWithWalk uses filepath.WalkDir as fallback
+func SearchWithWalk(pattern, searchPath string, opts *ui.Options) ([]string, error) {
 	var results []string
 	count := 0
 
@@ -115,7 +117,7 @@ func searchWithWalk(pattern, searchPath string, opts *Options) ([]string, error)
 
 		// Display result in real-time (streaming)
 		if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
-			showResult(path, count)
+			ui.ShowResult(path, count)
 		}
 
 		return nil
@@ -139,23 +141,23 @@ func matchPattern(name, pattern string, ignoreCase bool) bool {
 }
 
 // search performs the search using fd or fallback
-func search(pattern, searchPath string) ([]string, bool) {
+func Search(pattern, searchPath string) ([]string, bool) {
 	// Resolve search path
 	absPath, err := filepath.Abs(searchPath)
 	if err != nil {
 		absPath = searchPath
 	}
 
-	usingFd := hasFd()
-	showSearchInfo(absPath, pattern, usingFd)
+	usingFd := HasFd()
+	ui.ShowSearchInfo(absPath, pattern, usingFd)
 
-	fmt.Printf("%s %s\n\n", colors.Bold("Results:"), colors.Dim("(streaming in real-time...)"))
+	fmt.Printf("%s %s\n\n", ui.Colors.Bold("Results:"), ui.Colors.Dim("(streaming in real-time...)"))
 
 	var results []string
 	if usingFd {
-		results, _ = searchWithFd(pattern, absPath, &opts)
+		results, _ = SearchWithFd(pattern, absPath, &ui.Opts)
 	} else {
-		results, _ = searchWithWalk(pattern, absPath, &opts)
+		results, _ = SearchWithWalk(pattern, absPath, &ui.Opts)
 	}
 
 	return results, usingFd

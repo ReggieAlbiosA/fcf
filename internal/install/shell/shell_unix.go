@@ -1,6 +1,6 @@
 //go:build unix
 
-package main
+package shell
 
 import (
 	"fmt"
@@ -18,13 +18,13 @@ func getShellConfigPaths(homeDir string) map[ShellType]string {
 	}
 }
 
-// detectShellsForInstallation detects which shells need configuration
-func detectShellsForInstallation(homeDir string) []ShellInfo {
+// DetectShellsForInstallation detects which shells need configuration
+func DetectShellsForInstallation(homeDir string) []ShellInfo {
 	var shells []ShellInfo
 
 	// First try to detect from $SHELL env var (most reliable for default shell)
 	if shellType, _ := detectShellFromEnv(); shellType != ShellUnknown {
-		configPath := getShellConfigPath(homeDir, shellType)
+		configPath := GetShellConfigPath(homeDir, shellType)
 		shells = append(shells, ShellInfo{
 			Type:       shellType,
 			Name:       shellType.String(),
@@ -33,14 +33,14 @@ func detectShellsForInstallation(homeDir string) []ShellInfo {
 		})
 	} else {
 		// Fallback: check for config files
-		shells = detectShellsFromConfigFiles(homeDir)
+		shells = DetectShellsFromConfigFiles(homeDir)
 	}
 
 	return shells
 }
 
-// getShellConfigPath returns the primary config file path for a shell type
-func getShellConfigPath(homeDir string, shellType ShellType) string {
+// GetShellConfigPath returns the primary config file path for a shell type
+func GetShellConfigPath(homeDir string, shellType ShellType) string {
 	switch shellType {
 	case ShellBash:
 		// On macOS, prefer ~/.bash_profile for login shells
@@ -64,8 +64,8 @@ func getShellConfigPath(homeDir string, shellType ShellType) string {
 	}
 }
 
-// ensureUserBinDirectory creates ~/.local/bin if it doesn't exist
-func ensureUserBinDirectory() error {
+// EnsureUserBinDirectory creates ~/.local/bin if it doesn't exist
+func EnsureUserBinDirectory() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("could not determine home directory: %w", err)
@@ -79,8 +79,8 @@ func ensureUserBinDirectory() error {
 	return nil
 }
 
-// isUserBinInPath checks if ~/.local/bin is in the user's PATH
-func isUserBinInPath() bool {
+// IsUserBinInPath checks if ~/.local/bin is in the user's PATH
+func IsUserBinInPath() bool {
 	pathEnv := os.Getenv("PATH")
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -96,13 +96,13 @@ func isUserBinInPath() bool {
 	return false
 }
 
-// addUserBinToPath adds ~/.local/bin to PATH in shell config files
-func addUserBinToPath(homeDir string) error {
+// AddUserBinToPath adds ~/.local/bin to PATH in shell config files
+func AddUserBinToPath(homeDir string) error {
 	// Get the default shell
 	shellType, _ := detectShellFromEnv()
 	if shellType == ShellUnknown {
 		// Try to detect from config files
-		shells := detectShellsFromConfigFiles(homeDir)
+		shells := DetectShellsFromConfigFiles(homeDir)
 		if len(shells) > 0 {
 			shellType = shells[0].Type
 		}
@@ -112,7 +112,7 @@ func addUserBinToPath(homeDir string) error {
 		return nil // Can't add PATH if shell unknown
 	}
 
-	configPath := getShellConfigPath(homeDir, shellType)
+	configPath := GetShellConfigPath(homeDir, shellType)
 	if configPath == "" {
 		return nil
 	}
@@ -152,8 +152,8 @@ func addUserBinToPath(homeDir string) error {
 	return nil
 }
 
-// getShellReloadCommand returns the command to reload shell config
-func getShellReloadCommand(shellType ShellType) string {
+// GetShellReloadCommand returns the command to reload shell config
+func GetShellReloadCommand(shellType ShellType) string {
 	switch shellType {
 	case ShellBash:
 		return "source ~/.bashrc"

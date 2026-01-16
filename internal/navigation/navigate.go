@@ -1,9 +1,11 @@
-package main
+package navigation
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
 // getNavFilePath returns the path to the navigation temp file
@@ -19,17 +21,17 @@ func writeNavPath(targetPath string) error {
 }
 
 // cleanupNavFile removes the navigation temp file if it exists
-func cleanupNavFile() {
+func CleanupNavFile() {
 	navFile := getNavFilePath()
 	os.Remove(navFile)
 }
 
 // navigateToPath handles navigation to a selected path
-func navigateToPath(targetPath string) bool {
+func NavigateToPath(targetPath string) bool {
 	// Get file info
 	info, err := os.Stat(targetPath)
 	if err != nil {
-		fmt.Printf("%s Directory '%s' does not exist\n", colors.Red("ERROR:"), targetPath)
+		fmt.Printf("%s Directory '%s' does not exist\n", ui.Colors.Red("ERROR:"), targetPath)
 		return false
 	}
 
@@ -41,7 +43,7 @@ func navigateToPath(targetPath string) bool {
 	// Verify it's a valid directory
 	info, err = os.Stat(targetPath)
 	if err != nil || !info.IsDir() {
-		fmt.Printf("%s '%s' is not a valid directory\n", colors.Red("ERROR:"), targetPath)
+		fmt.Printf("%s '%s' is not a valid directory\n", ui.Colors.Red("ERROR:"), targetPath)
 		return false
 	}
 
@@ -53,15 +55,15 @@ func navigateToPath(targetPath string) bool {
 
 	// Write path to temp file for shell integration
 	if err := writeNavPath(absPath); err != nil {
-		fmt.Printf("%s Could not save navigation path: %v\n", colors.Red("ERROR:"), err)
+		fmt.Printf("%s Could not save navigation path: %v\n", ui.Colors.Red("ERROR:"), err)
 		return false
 	}
 
-	fmt.Printf("%s %s\n", colors.Green("✓ Will navigate to:"), colors.Cyan(absPath))
+	fmt.Printf("%s %s\n", ui.Colors.Green("✓ Will navigate to:"), ui.Colors.Cyan(absPath))
 	fmt.Println()
 
 	// Show directory contents
-	fmt.Println(colors.Dim("Contents:"))
+	fmt.Println(ui.Colors.Dim("Contents:"))
 	showDirectoryContents(absPath)
 
 	return true
@@ -71,7 +73,7 @@ func navigateToPath(targetPath string) bool {
 func showDirectoryContents(dirPath string) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
-		fmt.Printf("  %s\n", colors.Red("Could not read directory"))
+		fmt.Printf("  %s\n", ui.Colors.Red("Could not read directory"))
 		return
 	}
 
@@ -83,10 +85,10 @@ func showDirectoryContents(dirPath string) {
 
 		name := entry.Name()
 		if entry.IsDir() {
-			fmt.Printf("  %s\n", colors.Blue(name+"/"))
+			fmt.Printf("  %s\n", ui.Colors.Blue(name+"/"))
 		} else {
-			size := formatSize(info.Size())
-			fmt.Printf("  %s %s\n", name, colors.Dim("("+size+")"))
+			size := ui.FormatSize(info.Size())
+			fmt.Printf("  %s %s\n", name, ui.Colors.Dim("("+size+")"))
 		}
 	}
 	fmt.Println()

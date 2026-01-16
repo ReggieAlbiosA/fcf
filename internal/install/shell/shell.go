@@ -1,4 +1,4 @@
-package main
+package shell
 
 import (
 	"fmt"
@@ -67,8 +67,8 @@ func detectShellFromEnv() (ShellType, string) {
 	}
 }
 
-// detectShellsFromConfigFiles detects available shells by checking for config files
-func detectShellsFromConfigFiles(homeDir string) []ShellInfo {
+// DetectShellsFromConfigFiles detects available shells by checking for config files
+func DetectShellsFromConfigFiles(homeDir string) []ShellInfo {
 	var shells []ShellInfo
 
 	// Check Bash config files (both .bashrc and .bash_profile)
@@ -180,8 +180,8 @@ function fcf {
 # END FCF shell integration`
 }
 
-// hasExistingInstallation checks if shell integration is already installed
-func hasExistingInstallation(configPath string) bool {
+// HasExistingInstallation checks if shell integration is already installed
+func HasExistingInstallation(configPath string) bool {
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		return false
@@ -189,8 +189,8 @@ func hasExistingInstallation(configPath string) bool {
 	return strings.Contains(string(content), fcfMarkerStart)
 }
 
-// addShellIntegration adds the shell wrapper function to the config file
-func addShellIntegration(configPath string, shellType ShellType) error {
+// AddShellIntegration adds the shell wrapper function to the config file
+func AddShellIntegration(configPath string, shellType ShellType) error {
 	// Create config directory if needed (especially for Fish)
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, 0755); err != nil {

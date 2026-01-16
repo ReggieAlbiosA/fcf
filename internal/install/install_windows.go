@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package install
 
 import (
 	"fmt"
@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
 var (
@@ -86,8 +88,8 @@ func postInstall() error {
 		return fmt.Errorf("could not add to PATH: %w", err)
 	}
 
-	fmt.Printf("%s Added %s to system PATH\n", colors.Green("OK:"), colors.Cyan(installDir))
-	fmt.Println(colors.Yellow("Note: You may need to restart your terminal for PATH changes to take effect."))
+	fmt.Printf("%s Added %s to system PATH\n", ui.Colors.Green("OK:"), ui.Colors.Cyan(installDir))
+	fmt.Println(ui.Colors.Yellow("Note: You may need to restart your terminal for PATH changes to take effect."))
 
 	return nil
 }

@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package shell
 
 import (
 	"fmt"
@@ -42,8 +42,8 @@ func getPowerShellProfilePath() string {
 	return ""
 }
 
-// detectShellsForInstallation returns PowerShell as the only shell option on Windows
-func detectShellsForInstallation(homeDir string) []ShellInfo {
+// DetectShellsForInstallation returns PowerShell as the only shell option on Windows
+func DetectShellsForInstallation(homeDir string) []ShellInfo {
 	profilePath := getPowerShellProfilePath()
 	if profilePath == "" {
 		return []ShellInfo{}
@@ -59,16 +59,16 @@ func detectShellsForInstallation(homeDir string) []ShellInfo {
 	}
 }
 
-// getShellConfigPath returns the PowerShell profile path on Windows
-func getShellConfigPath(homeDir string, shellType ShellType) string {
+// GetShellConfigPath returns the PowerShell profile path on Windows
+func GetShellConfigPath(homeDir string, shellType ShellType) string {
 	if shellType == ShellPowerShell {
 		return getPowerShellProfilePath()
 	}
 	return ""
 }
 
-// ensureUserBinDirectory creates user bin directory if needed on Windows
-func ensureUserBinDirectory() error {
+// EnsureUserBinDirectory creates user bin directory if needed on Windows
+func EnsureUserBinDirectory() error {
 	userProfile := os.Getenv("USERPROFILE")
 	if userProfile == "" {
 		return fmt.Errorf("USERPROFILE environment variable not set")
@@ -82,8 +82,8 @@ func ensureUserBinDirectory() error {
 	return nil
 }
 
-// isUserBinInPath checks if user bin is in PATH on Windows
-func isUserBinInPath() bool {
+// IsUserBinInPath checks if user bin is in PATH on Windows
+func IsUserBinInPath() bool {
 	// On Windows, PATH entries are separated by semicolons
 	userProfile := os.Getenv("USERPROFILE")
 	if userProfile == "" {
@@ -103,8 +103,8 @@ func isUserBinInPath() bool {
 	return false
 }
 
-// addUserBinToPath adds user bin to PATH on Windows (requires registry modification)
-func addUserBinToPath(homeDir string) error {
+// AddUserBinToPath adds user bin to PATH on Windows (requires registry modification)
+func AddUserBinToPath(homeDir string) error {
 	// On Windows, adding to PATH typically requires:
 	// 1. Modifying the system environment variable (registry)
 	// 2. Or modifying user environment variable (registry)
@@ -119,8 +119,8 @@ func addUserBinToPath(homeDir string) error {
 	return nil // PATH modification on Windows is complex and may require admin
 }
 
-// getShellReloadCommand returns the command to reload PowerShell profile
-func getShellReloadCommand(shellType ShellType) string {
+// GetShellReloadCommand returns the command to reload PowerShell profile
+func GetShellReloadCommand(shellType ShellType) string {
 	if shellType == ShellPowerShell {
 		return ". $PROFILE"
 	}

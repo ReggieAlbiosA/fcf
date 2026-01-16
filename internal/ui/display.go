@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -7,10 +7,26 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
+
+	"github.com/ReggieAlbiosA/fcf/internal/platform"
 )
 
-// Colors holds color functions for output
-type Colors struct {
+// Options holds the command-line options
+type Options struct {
+	Pattern    string
+	Path       string
+	IgnoreCase bool
+	Type       string
+	ShowSize   bool
+	MaxDisplay int
+	Help       bool
+}
+
+// Opts holds the global command-line options
+var Opts Options
+
+// ColorFuncs holds color functions for output
+type ColorFuncs struct {
 	Red     func(format string, a ...interface{}) string
 	Green   func(format string, a ...interface{}) string
 	Yellow  func(format string, a ...interface{}) string
@@ -21,14 +37,15 @@ type Colors struct {
 	Dim     func(format string, a ...interface{}) string
 }
 
-var colors Colors
+// Colors is the global instance of ColorFuncs
+var Colors ColorFuncs
 
-// initColors initializes color functions based on terminal support
-func initColors() {
+// InitColors initializes color functions based on terminal support
+func InitColors() {
 	isTerm := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 
 	if isTerm {
-		colors = Colors{
+		Colors = ColorFuncs{
 			Red:     color.New(color.FgRed).SprintfFunc(),
 			Green:   color.New(color.FgGreen).SprintfFunc(),
 			Yellow:  color.New(color.FgYellow, color.Bold).SprintfFunc(),
@@ -43,7 +60,7 @@ func initColors() {
 		noColor := func(format string, a ...interface{}) string {
 			return fmt.Sprintf(format, a...)
 		}
-		colors = Colors{
+		Colors = ColorFuncs{
 			Red:     noColor,
 			Green:   noColor,
 			Yellow:  noColor,
@@ -62,10 +79,10 @@ func clearScreen() {
 }
 
 // showHeader displays the FCF header
-func showHeader() {
+func ShowHeader() {
 	clearScreen()
-	cyan := colors.Cyan
-	bold := colors.Bold
+	cyan := Colors.Cyan
+	bold := Colors.Bold
 	fmt.Println(bold(cyan("╔════════════════════════════════════════╗")))
 	fmt.Println(bold(cyan("║")) + "   " + bold("fcf") + " - Find File or Folder          " + bold(cyan("║")))
 	fmt.Println(bold(cyan("╚════════════════════════════════════════╝")))
@@ -73,7 +90,7 @@ func showHeader() {
 }
 
 // showResult displays a single search result with appropriate icon and color
-func showResult(filePath string, count int) {
+func ShowResult(filePath string, count int) {
 	info, err := os.Lstat(filePath)
 	if err != nil {
 		fmt.Printf("  [%d] %s\n", count, filePath)
@@ -87,25 +104,25 @@ func showResult(filePath string, count int) {
 	if info.IsDir() {
 		// Directory
 		fmt.Printf("%s %s%s\n",
-			colors.Cyan(fmt.Sprintf("  [%d]", count)),
-			colors.Blue(fmt.Sprintf("📁 %s%c", filePath, filepath.Separator)),
+			Colors.Cyan(fmt.Sprintf("  [%d]", count)),
+			Colors.Blue(fmt.Sprintf("📁 %s%c", filePath, filepath.Separator)),
 			fileInfo)
 	} else if info.Mode()&os.ModeSymlink != 0 {
 		// Symlink
 		fmt.Printf("%s %s%s\n",
-			colors.Cyan(fmt.Sprintf("  [%d]", count)),
-			colors.Magenta(fmt.Sprintf("🔗 %s", filePath)),
+			Colors.Cyan(fmt.Sprintf("  [%d]", count)),
+			Colors.Magenta(fmt.Sprintf("🔗 %s", filePath)),
 			fileInfo)
-	} else if isExecutable(filePath) {
+	} else if platform.IsExecutable(filePath) {
 		// Executable
 		fmt.Printf("%s %s%s\n",
-			colors.Cyan(fmt.Sprintf("  [%d]", count)),
-			colors.Green(fmt.Sprintf("⚡ %s", filePath)),
+			Colors.Cyan(fmt.Sprintf("  [%d]", count)),
+			Colors.Green(fmt.Sprintf("⚡ %s", filePath)),
 			fileInfo)
 	} else {
 		// Regular file
 		fmt.Printf("%s 📄 %s%s\n",
-			colors.Cyan(fmt.Sprintf("  [%d]", count)),
+			Colors.Cyan(fmt.Sprintf("  [%d]", count)),
 			filePath,
 			fileInfo)
 	}
@@ -113,14 +130,14 @@ func showResult(filePath string, count int) {
 
 // getFileInfo returns formatted file size info if ShowSize is enabled
 func getFileInfo(path string, info os.FileInfo) string {
-	if !opts.ShowSize || info.IsDir() {
+	if !Opts.ShowSize || info.IsDir() {
 		return ""
 	}
-	return colors.Dim(fmt.Sprintf(" (%s)", formatSize(info.Size())))
+	return Colors.Dim(fmt.Sprintf(" (%s)", FormatSize(info.Size())))
 }
 
-// formatSize formats bytes into human-readable size
-func formatSize(bytes int64) string {
+// FormatSize formats bytes into human-readable size
+func FormatSize(bytes int64) string {
 	const (
 		KB = 1024
 		MB = KB * 1024
@@ -140,39 +157,39 @@ func formatSize(bytes int64) string {
 }
 
 // showSearchInfo displays search parameters
-func showSearchInfo(searchPath, pattern string, usingFd bool) {
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Printf("%s %s\n", colors.Blue("Searching in:"), colors.Cyan(searchPath))
-	fmt.Printf("%s %s\n", colors.Blue("Pattern:"), colors.Yellow(pattern))
+func ShowSearchInfo(searchPath, pattern string, usingFd bool) {
+	fmt.Println(Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Printf("%s %s\n", Colors.Blue("Searching in:"), Colors.Cyan(searchPath))
+	fmt.Printf("%s %s\n", Colors.Blue("Pattern:"), Colors.Yellow(pattern))
 
 	if usingFd {
-		fmt.Printf("%s %s\n", colors.Blue("Method:"), colors.Green("fd (parallel search)"))
+		fmt.Printf("%s %s\n", Colors.Blue("Method:"), Colors.Green("fd (parallel search)"))
 	} else {
-		fmt.Printf("%s %s\n", colors.Blue("Method:"), colors.Yellow("walk (sequential - install 'fd' for faster search)"))
+		fmt.Printf("%s %s\n", Colors.Blue("Method:"), Colors.Yellow("walk (sequential - install 'fd' for faster search)"))
 	}
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
 }
 
 // showSummary displays search results summary
-func showSummary(count int, elapsed float64) {
+func ShowSummary(count int, elapsed float64) {
 	fmt.Println()
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 	if count == 0 {
-		fmt.Printf("%s for pattern: %s\n", colors.Yellow("No matches found"), colors.Cyan(opts.Pattern))
+		fmt.Printf("%s for pattern: %s\n", Colors.Yellow("No matches found"), Colors.Cyan(Opts.Pattern))
 		fmt.Println()
-		fmt.Println(colors.Dim("Tips:"))
+		fmt.Println(Colors.Dim("Tips:"))
 		fmt.Println("  - Try a different pattern")
-		fmt.Printf("  - Use %s for case-insensitive search\n", colors.Cyan("-i"))
+		fmt.Printf("  - Use %s for case-insensitive search\n", Colors.Cyan("-i"))
 	} else {
 		fmt.Printf("%s in %s\n",
-			colors.Green(colors.Bold(fmt.Sprintf("Found %d match(es)", count))),
-			colors.Cyan(fmt.Sprintf("%.2fs", elapsed)))
+			Colors.Green(Colors.Bold(fmt.Sprintf("Found %d match(es)", count))),
+			Colors.Cyan(fmt.Sprintf("%.2fs", elapsed)))
 
-		if opts.MaxDisplay > 0 && count > opts.MaxDisplay {
-			fmt.Printf("%s\n", colors.Yellow(fmt.Sprintf("(Displayed first %d of %d)", opts.MaxDisplay, count)))
+		if Opts.MaxDisplay > 0 && count > Opts.MaxDisplay {
+			fmt.Printf("%s\n", Colors.Yellow(fmt.Sprintf("(Displayed first %d of %d)", Opts.MaxDisplay, count)))
 		}
 	}
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 }

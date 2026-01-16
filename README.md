@@ -477,6 +477,73 @@ For bug reports, feature requests, or questions:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Project Structure
+
+FCF uses a clean, modular Go package structure:
+
+```
+fcf/
+├── cmd/
+│   └── fcf/
+│       └── main.go           # Entry point
+│
+├── internal/
+│   ├── command/              # CLI commands, flags, help
+│   │   ├── root.go
+│   │   ├── help.go
+│   │   └── version.go
+│   │
+│   ├── search/               # File/folder search logic
+│   │   └── search.go
+│   │
+│   ├── ui/                   # Display and interactive mode
+│   │   ├── display.go
+│   │   └── interactive.go
+│   │
+│   ├── navigation/           # Directory navigation
+│   │   └── navigate.go
+│   │
+│   ├── install/              # Installation command
+│   │   ├── install.go
+│   │   ├── install_unix.go   # Unix-specific (build tag: unix)
+│   │   ├── install_windows.go # Windows-specific (build tag: windows)
+│   │   └── shell/            # Shell integration
+│   │       ├── shell.go
+│   │       ├── shell_unix.go
+│   │       └── shell_windows.go
+│   │
+│   └── platform/             # Platform-specific utilities
+│       ├── exec_unix.go      # Executable detection (Unix)
+│       ├── exec_windows.go   # Executable detection (Windows)
+│       ├── distro_unix.go    # Linux distro detection
+│       └── distro_windows.go # Windows stub
+│
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/ReggieAlbiosA/fcf.git
+cd fcf
+
+# Build the binary
+go build -o fcf ./cmd/fcf
+
+# Run it
+./fcf --help
+```
+
+### Development
+
+- **Go version:** 1.21+
+- **Dependencies:** Listed in `go.mod`
+- **Platform-specific code:** Uses Go build tags (`//go:build unix`, `//go:build windows`)
+- **Testing:** `go test ./...`
+
 ## License
 
 MIT License - see LICENSE file for details
@@ -488,16 +555,24 @@ MIT License - see LICENSE file for details
 
 ## Changelog
 
-### v3.0.0+ (2026-01-14+)
+### v3.2.0 (2026-01-16)
+- **Major:** Refactored to modular Go package structure
+- Organized code into clean packages: `cmd/`, `internal/command/`, `internal/ui/`, `internal/search/`, `internal/navigation/`, `internal/install/`, `internal/platform/`
+- Improved code maintainability and testability
+- Updated CI/CD workflow for new build structure
+- Enhanced developer experience with clear project organization
+
+### v3.1.0 (2026-01-16)
+- **Major:** Automatic shell integration
+- `fcf install` now auto-detects and configures shell (bash, zsh, fish, PowerShell)
+- Added `--user`, `--shell`, and `--no-shell` installation flags
+- Idempotent installation with marker-based detection
+- No manual shell configuration required
+
+### v3.0.0 (2026-01-14)
 - **Major:** Unified cross-platform Go codebase
 - Consolidated all code to single Go project (Linux, macOS, Windows)
 - Platform-specific logic via Go build tags
-- **Enhanced `fcf install` command:**
-  - Auto-detects user's shell (Bash, Zsh, Fish, PowerShell)
-  - Automatically adds shell integration to config files
-  - Supports both user-scope and system-wide installation
-  - Idempotent: safe to run multiple times
-  - Optional manual shell override with `--shell` flag
 - Multi-platform CI/CD builds (5 platforms: Linux amd64/arm64, macOS Intel/Apple Silicon, Windows)
 - Linux distro detection via `/etc/os-release`
 - Automatic `fdfind` → `fd` alias support for Debian/Ubuntu

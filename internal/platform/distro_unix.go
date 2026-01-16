@@ -1,6 +1,6 @@
 //go:build unix
 
-package main
+package platform
 
 import (
 	"bufio"
@@ -9,12 +9,6 @@ import (
 	"strings"
 )
 
-// LinuxDistro holds information about the Linux distribution
-type LinuxDistro struct {
-	ID      string // ubuntu, debian, fedora, arch, alpine, rhel, centos, opensuse, etc.
-	Name    string // Pretty name (e.g., "Ubuntu 22.04 LTS")
-	Version string // Version ID (e.g., "22.04")
-}
 
 // detectLinuxDistro parses /etc/os-release to identify the Linux distribution
 func detectLinuxDistro() LinuxDistro {

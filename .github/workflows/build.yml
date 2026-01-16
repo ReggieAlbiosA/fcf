@@ -53,29 +53,25 @@ jobs:
           go-version: '1.21'
 
       - name: Download dependencies
-        run: |
-          cd win/go
-          go mod tidy
+        run: go mod tidy
 
       - name: Build binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
-        run: |
-          cd win/go
-          go build -o ${{ matrix.artifact }} -ldflags="-s -w"
+        run: go build -o ${{ matrix.artifact }} -ldflags="-s -w" ./cmd/fcf
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
-          path: win/go/${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: win/go/${{ matrix.artifact }}
+          files: ${{ matrix.artifact }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

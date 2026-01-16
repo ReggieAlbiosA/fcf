@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"bufio"
@@ -6,6 +6,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/ReggieAlbiosA/fcf/internal/navigation"
+	"github.com/ReggieAlbiosA/fcf/internal/search"
+	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
 var reader = bufio.NewReader(os.Stdin)
@@ -21,14 +25,14 @@ func readLine(prompt string) string {
 func getSearchPath() string {
 	cwd, _ := os.Getwd()
 
-	fmt.Printf("%s Enter path to search\n", colors.Bold("Step 1:"))
-	fmt.Printf("%s\n", colors.Dim(fmt.Sprintf("(Press Enter for current directory: %s)", cwd)))
+	fmt.Printf("%s Enter path to search\n", ui.Colors.Bold("Step 1:"))
+	fmt.Printf("%s\n", ui.Colors.Dim(fmt.Sprintf("(Press Enter for current directory: %s)", cwd)))
 	fmt.Println()
 
-	userPath := readLine(colors.Cyan("Path: "))
+	userPath := readLine(ui.Colors.Cyan("Path: "))
 
 	if userPath == "" {
-		fmt.Println(colors.Green("Using current directory"))
+		fmt.Println(ui.Colors.Green("Using current directory"))
 		return "."
 	}
 
@@ -46,7 +50,7 @@ func getSearchPath() string {
 	// Validate path exists
 	info, err := os.Stat(userPath)
 	if err != nil || !info.IsDir() {
-		fmt.Printf("%s Directory '%s' does not exist\n", colors.Red("ERROR:"), userPath)
+		fmt.Printf("%s Directory '%s' does not exist\n", ui.Colors.Red("ERROR:"), userPath)
 		readLine("Press Enter to try again...")
 		return ""
 	}
@@ -57,14 +61,14 @@ func getSearchPath() string {
 
 // getPattern prompts for and returns the search pattern (Step 2)
 func getPattern() string {
-	fmt.Printf("%s Enter file/folder name or pattern to find\n", colors.Bold("Step 2:"))
-	fmt.Printf("%s\n", colors.Dim("Examples: *.log, config, .env, src, *.js"))
+	fmt.Printf("%s Enter file/folder name or pattern to find\n", ui.Colors.Bold("Step 2:"))
+	fmt.Printf("%s\n", ui.Colors.Dim("Examples: *.log, config, .env, src, *.js"))
 	fmt.Println()
 
-	pattern := readLine(colors.Cyan("Pattern: "))
+	pattern := readLine(ui.Colors.Cyan("Pattern: "))
 
 	if pattern == "" {
-		fmt.Printf("%s Pattern cannot be empty\n", colors.Red("ERROR:"))
+		fmt.Printf("%s Pattern cannot be empty\n", ui.Colors.Red("ERROR:"))
 		readLine("Press Enter to try again...")
 		return ""
 	}
@@ -73,17 +77,17 @@ func getPattern() string {
 	return pattern
 }
 
-// selectResult prompts user to select a result for navigation (Step 3)
-func selectResult(results []string) string {
+// SelectResult prompts user to select a result for navigation (Step 3)
+func SelectResult(results []string) string {
 	fmt.Println()
-	fmt.Printf("%s Enter path to navigate to\n", colors.Bold("Step 3:"))
-	fmt.Printf("%s\n", colors.Dim("(Enter a number from results, full path, or press Enter to skip)"))
+	fmt.Printf("%s Enter path to navigate to\n", ui.Colors.Bold("Step 3:"))
+	fmt.Printf("%s\n", ui.Colors.Dim("(Enter a number from results, full path, or press Enter to skip)"))
 	fmt.Println()
 
-	navInput := readLine(colors.Cyan("Navigate to: "))
+	navInput := readLine(ui.Colors.Cyan("Navigate to: "))
 
 	if navInput == "" {
-		fmt.Println(colors.Dim("Skipped navigation"))
+		fmt.Println(ui.Colors.Dim("Skipped navigation"))
 		return ""
 	}
 
@@ -93,7 +97,7 @@ func selectResult(results []string) string {
 		if idx >= 0 && idx < len(results) {
 			return results[idx]
 		}
-		fmt.Printf("%s Invalid result number\n", colors.Red("ERROR:"))
+		fmt.Printf("%s Invalid result number\n", ui.Colors.Red("ERROR:"))
 		return ""
 	}
 
@@ -112,15 +116,15 @@ func selectResult(results []string) string {
 // showOptionsMenu displays the options menu and returns user choice
 func showOptionsMenu() int {
 	fmt.Println()
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(colors.Bold("Options:"))
-	fmt.Printf("  %s Find again (new search)\n", colors.Cyan("[f]"))
-	fmt.Printf("  %s Repeat search (same path)\n", colors.Cyan("[r]"))
-	fmt.Printf("  %s Exit\n", colors.Cyan("[n]"))
-	fmt.Println(colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(ui.Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(ui.Colors.Bold("Options:"))
+	fmt.Printf("  %s Find again (new search)\n", ui.Colors.Cyan("[f]"))
+	fmt.Printf("  %s Repeat search (same path)\n", ui.Colors.Cyan("[r]"))
+	fmt.Printf("  %s Exit\n", ui.Colors.Cyan("[n]"))
+	fmt.Println(ui.Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
 
-	choice := readLine(colors.Cyan("Choose: "))
+	choice := readLine(ui.Colors.Cyan("Choose: "))
 
 	switch strings.ToLower(choice) {
 	case "f":
@@ -132,8 +136,8 @@ func showOptionsMenu() int {
 	}
 }
 
-// runInteractiveMode runs the main interactive loop
-func runInteractiveMode() {
+// RunInteractiveMode runs the main interactive loop
+func RunInteractiveMode() {
 	currentStep := 1
 	var searchPath, pattern string
 
@@ -142,7 +146,7 @@ func runInteractiveMode() {
 		var results []string
 
 		// Show header
-		showHeader()
+		ui.ShowHeader()
 
 		// Step 1: Get search path
 		if currentStep == 1 {
@@ -155,7 +159,7 @@ func runInteractiveMode() {
 
 		// Step 2: Get pattern
 		if currentStep == 2 {
-			showHeader()
+			ui.ShowHeader()
 			pattern = getPattern()
 			if pattern == "" {
 				continue
@@ -163,22 +167,22 @@ func runInteractiveMode() {
 		}
 
 		// Show header again before search
-		showHeader()
+		ui.ShowHeader()
 
 		// Execute search
 		startTime := getTime()
-		results, _ = search(pattern, searchPath)
+		results, _ = search.Search(pattern, searchPath)
 		elapsed := getTime() - startTime
 
 		// Show summary
-		showSummary(len(results), elapsed)
+		ui.ShowSummary(len(results), elapsed)
 
 		// Step 3: Navigate to path
 		if len(results) > 0 {
-			targetPath := selectResult(results)
+			targetPath := SelectResult(results)
 			if targetPath != "" {
 				fmt.Println()
-				navigateToPath(targetPath)
+				navigation.NavigateToPath(targetPath)
 			}
 		}
 
@@ -187,7 +191,7 @@ func runInteractiveMode() {
 
 		switch choice {
 		case 0: // Exit
-			fmt.Println(colors.Green("Goodbye!"))
+			fmt.Println(ui.Colors.Green("Goodbye!"))
 			return
 		case 1: // Go to Step 1
 			currentStep = 1

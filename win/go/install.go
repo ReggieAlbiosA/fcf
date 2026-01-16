@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
@@ -50,7 +51,7 @@ func runInstall() {
 			os.Exit(1)
 		}
 		homeDir, _ := os.UserHomeDir()
-		installPath = os.ExpandEnv("$HOME/.local/bin/fcf")
+		installPath = filepath.Join(homeDir, ".local", "bin", "fcf")
 	} else {
 		installPath = getInstallPath()
 	}

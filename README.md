@@ -22,77 +22,41 @@ Think of it as `find` with a friendly interface - interactive prompts, color-cod
 
 ### Installation
 
-FCF is a compiled Go binary with cross-platform support. Download the binary for your platform and run `fcf install` to auto-detect your shell and configure everything.
+One-liner installation - downloads, installs, and configures everything automatically.
 
 #### Linux
 
-**Option 1: System-wide installation (recommended)**
-
 ```bash
-# Download binary for your architecture (amd64 is most common)
-curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
-chmod +x fcf
+# amd64 (most common)
+curl -fsSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o /tmp/fcf && chmod +x /tmp/fcf && sudo /tmp/fcf install && rm /tmp/fcf
 
-# Install and configure (requires sudo)
-sudo ./fcf install
-```
-
-**Option 2: User-only installation (no sudo required)**
-
-```bash
-# Download binary
-curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
-chmod +x fcf
-
-# Install for current user only
-./fcf install --user
+# arm64
+curl -fsSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-arm64 -o /tmp/fcf && chmod +x /tmp/fcf && sudo /tmp/fcf install && rm /tmp/fcf
 ```
 
 #### macOS
 
-**Option 1: System-wide installation (recommended)**
-
 ```bash
-# Download for your Mac architecture
-# Apple Silicon (M1/M2/M3):
-curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-arm64 -o fcf
+# Apple Silicon (M1/M2/M3)
+curl -fsSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-arm64 -o /tmp/fcf && chmod +x /tmp/fcf && sudo /tmp/fcf install && rm /tmp/fcf
 
-# OR Intel Mac:
-# curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-amd64 -o fcf
-
-chmod +x fcf
-
-# Install and configure (requires sudo)
-sudo ./fcf install
+# Intel Mac
+curl -fsSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-darwin-amd64 -o /tmp/fcf && chmod +x /tmp/fcf && sudo /tmp/fcf install && rm /tmp/fcf
 ```
 
-**Option 2: User-only installation (no sudo required)**
-
-```bash
-# Download for your Mac architecture (see above)
-chmod +x fcf
-
-# Install for current user only
-./fcf install --user
-```
-
-#### Windows (PowerShell)
-
-Run PowerShell as Administrator:
+#### Windows (PowerShell as Administrator)
 
 ```powershell
-# Download binary
-Invoke-WebRequest -Uri "https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe" -OutFile fcf.exe
-
-# Install and configure
-.\fcf.exe install
+irm https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe -OutFile $env:TEMP\fcf.exe; & $env:TEMP\fcf.exe install; Remove-Item $env:TEMP\fcf.exe
 ```
 
-The `fcf install` command automatically:
-- Detects your shell (bash, zsh, fish on Unix; PowerShell on Windows)
-- Adds the required shell wrapper function for navigation
-- Configures PATH if needed
-- Provides reload instructions
+**After installation, reload your shell or open a new terminal to start using `fcf`.**
+
+The installer automatically:
+- Copies the binary to system path (`/usr/local/bin` or `C:\Program Files\fcf`)
+- Detects your shell (Bash, Zsh, Fish, or PowerShell)
+- Adds the shell wrapper function for directory navigation
+- Works immediately after shell reload
 
 ## Usage
 
@@ -288,28 +252,21 @@ fcf -H ".git*"
 FCF is a **compiled Go binary** with automatic shell integration configuration.
 
 **Installed Binary:**
-- Linux/macOS: `~/.local/bin/fcf` (user) or `/usr/local/bin/fcf` (system)
-- Windows: `%USERPROFILE%\.local\bin\fcf.exe` (user) or `C:\Program Files\fcf\fcf.exe` (system)
+- Linux/macOS: `/usr/local/bin/fcf`
+- Windows: `C:\Program Files\fcf\fcf.exe`
 
 **Shell Configuration:**
 - Automatically detected: Bash, Zsh, Fish (Unix/Linux/macOS), PowerShell (Windows)
 - Wrapper function added to config file for directory navigation
 - Idempotent: Won't duplicate on reinstall
 
-### Installation Scopes
-
-| Scope | Linux/macOS | Windows | Requires Sudo |
-|-------|-------------|---------|---------------|
-| **System-wide** | `/usr/local/bin/fcf` | `C:\Program Files\fcf\fcf.exe` | Yes |
-| **User-only** | `~/.local/bin/fcf` | `%USERPROFILE%\.local\bin\fcf.exe` | No |
-
 ### Command Options
 
 ```bash
-fcf install              # System-wide (requires sudo on Unix)
-fcf install --user      # User-only (no sudo required)
-fcf install --no-shell  # Binary only, skip shell integration
-fcf install --shell zsh # Force specific shell configuration
+fcf install               # Full installation (requires sudo on Unix)
+fcf install --no-shell    # Binary only, skip shell integration
+fcf install --shell zsh   # Force specific shell configuration
+fcf install --shell-only  # Only install shell integration (skip binary)
 ```
 
 ### Supported Shells
@@ -324,22 +281,19 @@ fcf install --shell zsh # Force specific shell configuration
 
 ## Updating
 
-To update to the latest version, re-download the binary and run `fcf install` again:
+Re-run the same one-liner installation command to update to the latest version:
 
 ```bash
-# Linux/macOS
-curl -sSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o fcf
-chmod +x fcf
-sudo ./fcf install       # or ./fcf install --user
+# Linux (amd64)
+curl -fsSL https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-linux-amd64 -o /tmp/fcf && chmod +x /tmp/fcf && sudo /tmp/fcf install && rm /tmp/fcf
 ```
 
 ```powershell
-# Windows
-Invoke-WebRequest -Uri "https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe" -OutFile fcf.exe
-.\fcf.exe install
+# Windows (PowerShell as Administrator)
+irm https://github.com/ReggieAlbiosA/fcf/releases/latest/download/fcf-windows-amd64.exe -OutFile $env:TEMP\fcf.exe; & $env:TEMP\fcf.exe install; Remove-Item $env:TEMP\fcf.exe
 ```
 
-The installer detects your existing installation and updates the shell configuration if needed.
+The installer detects your existing installation and updates automatically.
 
 ## Available Binaries
 
@@ -364,10 +318,7 @@ Download the appropriate binary for your platform and run `fcf install` to compl
 ### Linux/macOS
 
 ```bash
-# User installation
-rm ~/.local/bin/fcf
-
-# System-wide installation
+# Remove binary
 sudo rm /usr/local/bin/fcf
 
 # Optional: Remove shell integration from config files
@@ -375,13 +326,10 @@ sudo rm /usr/local/bin/fcf
 # and remove the fcf function block
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell as Administrator)
 
 ```powershell
-# User installation
-Remove-Item "$env:USERPROFILE\.local\bin\fcf.exe" -Force
-
-# System-wide installation (as Administrator)
+# Remove binary
 Remove-Item "C:\Program Files\fcf" -Recurse -Force
 
 # Optional: Remove shell integration from PowerShell profile
@@ -565,7 +513,7 @@ MIT License - see LICENSE file for details
 ### v3.1.0 (2026-01-16)
 - **Major:** Automatic shell integration
 - `fcf install` now auto-detects and configures shell (bash, zsh, fish, PowerShell)
-- Added `--user`, `--shell`, and `--no-shell` installation flags
+- Added `--shell`, `--no-shell`, and `--shell-only` installation flags
 - Idempotent installation with marker-based detection
 - No manual shell configuration required
 

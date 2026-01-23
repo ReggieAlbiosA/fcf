@@ -12,11 +12,13 @@ Think of it as `find` with a friendly interface - interactive prompts, color-cod
 
 - **Parallel Search** - Uses `fd` for blazing fast parallel file searching
 - **Real-Time Streaming** - Results appear line-by-line as they're found
+- **Stoppable Search** - Press `s` to stop search immediately and use current results
 - **Interactive Mode** - Step-by-step guided search workflow
 - **Navigation** - Jump directly to any result or path
 - **Pattern Matching** - Glob patterns, partial names, extensions
 - **Color-Coded Output** - Visual distinction for folders, files, executables, symlinks
 - **Loop Workflow** - Search again without restarting
+- **Self-Update** - Built-in `fcf update` command to get latest version
 
 ## Quick Start
 
@@ -57,6 +59,34 @@ The installer automatically:
 - Detects your shell (Bash, Zsh, Fish, or PowerShell)
 - Adds the shell wrapper function for directory navigation
 - Works immediately after shell reload
+
+#### Package Managers (Alternative)
+
+**Homebrew (macOS/Linux):**
+```bash
+brew tap ReggieAlbiosA/tap
+brew install fcf
+fcf install --shell-only  # Add shell integration
+```
+
+**Scoop (Windows):**
+```powershell
+scoop bucket add fcf https://github.com/ReggieAlbiosA/scoop-bucket
+scoop install fcf
+fcf install --shell-only  # Add shell integration
+```
+
+### Managing FCF
+
+```bash
+# Update to latest version
+sudo fcf update
+
+# Uninstall fcf
+sudo fcf uninstall
+```
+
+On Windows, run these commands in PowerShell as Administrator (without `sudo`).
 
 ## Usage
 
@@ -502,6 +532,15 @@ MIT License - see LICENSE file for details
 - GitHub: [@ReggieAlbiosA](https://github.com/ReggieAlbiosA)
 
 ## Changelog
+
+### v3.3.0 (2026-01-23)
+- **Major:** Package management and search control
+- Added `fcf update` command for self-updating from GitHub releases
+- Added `fcf uninstall` command for clean removal (binary + shell integration)
+- Added press `s` to stop search immediately during execution
+- Cross-platform keyboard input support for stop functionality
+- One-liner installation commands in README
+- Updated help command with new subcommands
 
 ### v3.2.0 (2026-01-16)
 - **Major:** Refactored to modular Go package structure

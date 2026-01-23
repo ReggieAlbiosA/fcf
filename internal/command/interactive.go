@@ -171,11 +171,12 @@ func RunInteractiveMode() {
 
 		// Execute search
 		startTime := getTime()
-		results, _ = search.Search(pattern, searchPath)
+		searchResult, _ := search.SearchWithStop(pattern, searchPath)
 		elapsed := getTime() - startTime
+		results = searchResult.Results
 
 		// Show summary
-		ui.ShowSummary(len(results), elapsed)
+		ui.ShowSummaryWithStatus(len(results), elapsed, searchResult.Stopped)
 
 		// Step 3: Navigate to path
 		if len(results) > 0 {

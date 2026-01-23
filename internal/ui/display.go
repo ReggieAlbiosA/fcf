@@ -173,10 +173,20 @@ func ShowSearchInfo(searchPath, pattern string, usingFd bool) {
 
 // showSummary displays search results summary
 func ShowSummary(count int, elapsed float64) {
+	ShowSummaryWithStatus(count, elapsed, false)
+}
+
+// ShowSummaryWithStatus displays search results summary with optional stopped status
+func ShowSummaryWithStatus(count int, elapsed float64, stopped bool) {
 	fmt.Println()
 	fmt.Println(Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
-	if count == 0 {
+	if stopped {
+		fmt.Printf("%s %s in %s\n",
+			Colors.Yellow("Search stopped."),
+			Colors.Green(fmt.Sprintf("Found %d match(es)", count)),
+			Colors.Cyan(fmt.Sprintf("%.2fs", elapsed)))
+	} else if count == 0 {
 		fmt.Printf("%s for pattern: %s\n", Colors.Yellow("No matches found"), Colors.Cyan(Opts.Pattern))
 		fmt.Println()
 		fmt.Println(Colors.Dim("Tips:"))

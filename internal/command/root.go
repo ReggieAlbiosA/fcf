@@ -61,14 +61,14 @@ func runSingleSearch() {
 	ui.ShowHeader()
 
 	startTime := getTime()
-	results, _ := search.Search(ui.Opts.Pattern, ui.Opts.Path)
+	result, _ := search.SearchWithStop(ui.Opts.Pattern, ui.Opts.Path)
 	elapsed := getTime() - startTime
 
-	ui.ShowSummary(len(results), elapsed)
+	ui.ShowSummaryWithStatus(len(result.Results), elapsed, result.Stopped)
 
 	// If results found, offer navigation
-	if len(results) > 0 {
-		targetPath := SelectResult(results)
+	if len(result.Results) > 0 {
+		targetPath := SelectResult(result.Results)
 		if targetPath != "" {
 			fmt.Println()
 			navigation.NavigateToPath(targetPath)
@@ -81,4 +81,14 @@ func runSingleSearch() {
 // RunInstall is called from main for the install command
 func RunInstall() {
 	install.RunInstall()
+}
+
+// RunUninstall is called from main for the uninstall command
+func RunUninstall() {
+	install.RunUninstall()
+}
+
+// RunUpdate is called from main for the update command
+func RunUpdate() {
+	install.RunUpdate(Version)
 }

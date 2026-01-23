@@ -93,3 +93,26 @@ func postInstall() error {
 
 	return nil
 }
+
+// postUninstall removes fcf from the system PATH and cleans up the install directory
+func postUninstall() {
+	installDir := filepath.Dir(getInstallPath())
+
+	// Remove from system PATH using PowerShell
+	script := fmt.Sprintf(`
+		$installDir = '%s'
+		$currentPath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+		$newPath = ($currentPath.Split(';') | Where-Object { $_ -ne $installDir }) -join ';'
+		[Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+	`, installDir)
+
+	cmd := exec.Command("powershell", "-NoProfile", "-Command", script)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("%s Could not remove from PATH: %s\n", ui.Colors.Yellow("Warning:"), err.Error())
+	}
+
+	// Remove the install directory if empty
+	if err := os.Remove(installDir); err != nil {
+		// Directory might not be empty or might not exist, ignore
+	}
+}

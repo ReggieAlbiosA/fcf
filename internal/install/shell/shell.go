@@ -260,6 +260,52 @@ func updateExistingInstallation(configPath string, content string, shellType She
 	return nil
 }
 
+// RemoveShellIntegration removes the shell wrapper function from the config file
+func RemoveShellIntegration(configPath string) error {
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("could not read config file: %w", err)
+	}
+
+	contentStr := string(content)
+
+	startIdx := strings.Index(contentStr, fcfMarkerStart)
+	endIdx := strings.Index(contentStr, fcfMarkerEnd)
+
+	if startIdx == -1 || endIdx == -1 {
+		// Markers not found, nothing to remove
+		return nil
+	}
+
+	// Find the end of the END marker (include trailing newline if present)
+	endMarkerEnd := endIdx + len(fcfMarkerEnd)
+	if endMarkerEnd < len(contentStr) && contentStr[endMarkerEnd] == '\n' {
+		endMarkerEnd++
+	}
+
+	// Remove any leading newlines before the start marker
+	for startIdx > 0 && contentStr[startIdx-1] == '\n' {
+		startIdx--
+	}
+	// Keep at least one newline if there's content before
+	if startIdx > 0 {
+		startIdx++
+	}
+
+	// Build new content without the fcf block
+	newContent := contentStr[:startIdx] + contentStr[endMarkerEnd:]
+
+	// Trim trailing whitespace but keep one final newline
+	newContent = strings.TrimRight(newContent, "\n\t ") + "\n"
+
+	// Write back to file
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("could not write config file: %w", err)
+	}
+
+	return nil
+}
+
 // fileExists checks if a file exists
 func fileExists(path string) bool {
 	_, err := os.Stat(path)

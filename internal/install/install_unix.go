@@ -34,3 +34,9 @@ func postInstall() error {
 	// No additional setup required
 	return nil
 }
+
+// postUninstall performs any post-uninstallation cleanup (Unix: none needed)
+func postUninstall() {
+	// On Unix, no additional cleanup required
+	// /usr/local/bin remains in PATH (used by other tools)
+}

@@ -8,8 +8,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ReggieAlbiosA/fcf/internal/input"
 	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
+
+// SearchResult contains the search results and metadata
+type SearchResult struct {
+	Results []string
+	Stopped bool // true if search was stopped by user
+}
 
 // getFdCommand returns the fd command name if available
 // Checks for "fd" first (standard), then "fdfind" (Debian/Ubuntu package name)
@@ -29,7 +36,7 @@ func HasFd() bool {
 }
 
 // SearchWithFd uses fd for fast parallel search
-func SearchWithFd(pattern, searchPath string, opts *ui.Options) ([]string, error) {
+func SearchWithFd(pattern, searchPath string, opts *ui.Options, stopChan <-chan struct{}) (*SearchResult, error) {
 	args := []string{"--color", "never", "--hidden", "--no-ignore"}
 
 	// Type filter
@@ -59,18 +66,30 @@ func SearchWithFd(pattern, searchPath string, opts *ui.Options) ([]string, error
 		return nil, err
 	}
 
-	var results []string
+	result := &SearchResult{
+		Results: []string{},
+		Stopped: false,
+	}
 	scanner := bufio.NewScanner(stdout)
 	count := 0
 
 	for scanner.Scan() {
+		// Check for stop signal
+		select {
+		case <-stopChan:
+			cmd.Process.Kill()
+			result.Stopped = true
+			return result, nil
+		default:
+		}
+
 		line := scanner.Text()
 		if line == "" {
 			continue
 		}
 
 		count++
-		results = append(results, line)
+		result.Results = append(result.Results, line)
 
 		// Display result in real-time (streaming)
 		if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
@@ -79,17 +98,28 @@ func SearchWithFd(pattern, searchPath string, opts *ui.Options) ([]string, error
 	}
 
 	cmd.Wait()
-	return results, nil
+	return result, nil
 }
 
 // SearchWithWalk uses filepath.WalkDir as fallback
-func SearchWithWalk(pattern, searchPath string, opts *ui.Options) ([]string, error) {
-	var results []string
+func SearchWithWalk(pattern, searchPath string, opts *ui.Options, stopChan <-chan struct{}) (*SearchResult, error) {
+	result := &SearchResult{
+		Results: []string{},
+		Stopped: false,
+	}
 	count := 0
 
 	err := filepath.WalkDir(searchPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip errors, continue walking
+		}
+
+		// Check for stop signal
+		select {
+		case <-stopChan:
+			result.Stopped = true
+			return filepath.SkipAll
+		default:
 		}
 
 		// Skip the root directory itself
@@ -113,7 +143,7 @@ func SearchWithWalk(pattern, searchPath string, opts *ui.Options) ([]string, err
 		}
 
 		count++
-		results = append(results, path)
+		result.Results = append(result.Results, path)
 
 		// Display result in real-time (streaming)
 		if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
@@ -123,7 +153,7 @@ func SearchWithWalk(pattern, searchPath string, opts *ui.Options) ([]string, err
 		return nil
 	})
 
-	return results, err
+	return result, err
 }
 
 // matchPattern checks if name matches the glob pattern
@@ -142,6 +172,12 @@ func matchPattern(name, pattern string, ignoreCase bool) bool {
 
 // search performs the search using fd or fallback
 func Search(pattern, searchPath string) ([]string, bool) {
+	result, _ := SearchWithStop(pattern, searchPath)
+	return result.Results, HasFd()
+}
+
+// SearchWithStop performs the search with ability to stop via 's' key
+func SearchWithStop(pattern, searchPath string) (*SearchResult, bool) {
 	// Resolve search path
 	absPath, err := filepath.Abs(searchPath)
 	if err != nil {
@@ -151,14 +187,33 @@ func Search(pattern, searchPath string) ([]string, bool) {
 	usingFd := HasFd()
 	ui.ShowSearchInfo(absPath, pattern, usingFd)
 
-	fmt.Printf("%s %s\n\n", ui.Colors.Bold("Results:"), ui.Colors.Dim("(streaming in real-time...)"))
+	fmt.Printf("%s %s  %s\n\n",
+		ui.Colors.Bold("Results:"),
+		ui.Colors.Dim("(streaming in real-time...)"),
+		ui.Colors.Yellow("[press 's' to stop]"))
 
-	var results []string
+	// Set up stop channel and key listener
+	stopChan := make(chan struct{})
+	keyChan := make(chan string, 10)
+	stopListener := input.StartKeyListener(keyChan)
+	defer stopListener()
+
+	// Goroutine to handle 's' key press
+	go func() {
+		for key := range keyChan {
+			if strings.ToLower(key) == "s" {
+				close(stopChan)
+				return
+			}
+		}
+	}()
+
+	var result *SearchResult
 	if usingFd {
-		results, _ = SearchWithFd(pattern, absPath, &ui.Opts)
+		result, _ = SearchWithFd(pattern, absPath, &ui.Opts, stopChan)
 	} else {
-		results, _ = SearchWithWalk(pattern, absPath, &ui.Opts)
+		result, _ = SearchWithWalk(pattern, absPath, &ui.Opts, stopChan)
 	}
 
-	return results, usingFd
+	return result, usingFd
 }

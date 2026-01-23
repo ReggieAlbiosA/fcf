@@ -9,10 +9,19 @@ import (
 )
 
 func main() {
-	// Check for install subcommand first (before flag parsing)
-	if len(os.Args) > 1 && os.Args[1] == "install" {
-		command.RunInstall()
-		return
+	// Check for subcommands first (before flag parsing)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "install":
+			command.RunInstall()
+			return
+		case "uninstall":
+			command.RunUninstall()
+			return
+		case "update":
+			command.RunUpdate()
+			return
+		}
 	}
 
 	// Clean up any stale navigation path on start

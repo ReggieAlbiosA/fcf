@@ -3,7 +3,6 @@
 package shell
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -65,58 +64,6 @@ func GetShellConfigPath(homeDir string, shellType ShellType) string {
 		return getPowerShellProfilePath()
 	}
 	return ""
-}
-
-// EnsureUserBinDirectory creates user bin directory if needed on Windows
-func EnsureUserBinDirectory() error {
-	userProfile := os.Getenv("USERPROFILE")
-	if userProfile == "" {
-		return fmt.Errorf("USERPROFILE environment variable not set")
-	}
-
-	binDir := filepath.Join(userProfile, ".local", "bin")
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return fmt.Errorf("could not create user bin directory: %w", err)
-	}
-
-	return nil
-}
-
-// IsUserBinInPath checks if user bin is in PATH on Windows
-func IsUserBinInPath() bool {
-	// On Windows, PATH entries are separated by semicolons
-	userProfile := os.Getenv("USERPROFILE")
-	if userProfile == "" {
-		return false
-	}
-
-	userBin := filepath.Join(userProfile, ".local", "bin")
-	pathEnv := os.Getenv("PATH")
-
-	// Case-insensitive comparison on Windows
-	for _, p := range filepath.SplitList(pathEnv) {
-		if p == userBin {
-			return true
-		}
-	}
-
-	return false
-}
-
-// AddUserBinToPath adds user bin to PATH on Windows (requires registry modification)
-func AddUserBinToPath(homeDir string) error {
-	// On Windows, adding to PATH typically requires:
-	// 1. Modifying the system environment variable (registry)
-	// 2. Or modifying user environment variable (registry)
-	// 3. Or updating PowerShell profile
-	//
-	// For simplicity, we'll document this in the installation output
-	// Users can either:
-	// - Run the exe directly if in .local\bin
-	// - Add it manually to PATH via System Properties
-	// - Install system-wide to get automatic PATH
-
-	return nil // PATH modification on Windows is complex and may require admin
 }
 
 // GetShellReloadCommand returns the command to reload PowerShell profile

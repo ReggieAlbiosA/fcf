@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/ReggieAlbiosA/fcf/internal/install/shell"
@@ -20,9 +19,9 @@ func RunInstall() {
 
 	// Parse install flags
 	fs := flag.NewFlagSet("install", flag.ExitOnError)
-	userScope := fs.Bool("user", false, "Install for current user only (no elevated privileges required)")
 	shellOverride := fs.String("shell", "", "Override shell detection (bash, zsh, fish)")
 	noShell := fs.Bool("no-shell", false, "Skip shell integration")
+	shellOnly := fs.Bool("shell-only", false, "Only install shell integration (skip binary installation)")
 	fs.Parse(os.Args[2:])
 
 	fmt.Println(ui.Colors.Bold(ui.Colors.Cyan("╔════════════════════════════════════════╗")))
@@ -30,9 +29,22 @@ func RunInstall() {
 	fmt.Println(ui.Colors.Bold(ui.Colors.Cyan("╚════════════════════════════════════════╝")))
 	fmt.Println()
 
-	// Check for elevated privileges (skip for user-scope install)
-	if !*userScope && !isElevated() {
-		fmt.Println(ui.Colors.Red("Error: System-wide installation requires elevated privileges."))
+	// Shell-only mode: skip binary installation and privilege check
+	if *shellOnly {
+		if *noShell {
+			fmt.Println(ui.Colors.Red("Error: --shell-only and --no-shell cannot be used together"))
+			os.Exit(1)
+		}
+		fmt.Printf("%s %s\n", ui.Colors.Blue("Mode:"), ui.Colors.Cyan("Shell integration only"))
+		fmt.Println()
+		installShellIntegration(*shellOverride)
+		showInstallSuccess()
+		return
+	}
+
+	// Check for elevated privileges
+	if !isElevated() {
+		fmt.Println(ui.Colors.Red("Error: Installation requires elevated privileges."))
 		fmt.Println()
 		if runtime.GOOS == "windows" {
 			fmt.Println("Please run this command as Administrator:")
@@ -41,27 +53,13 @@ func RunInstall() {
 			fmt.Println("Please run with sudo:")
 			fmt.Println(ui.Colors.Cyan("  sudo ./fcf install"))
 		}
-		fmt.Println()
-		fmt.Println("Alternatively, install for current user only:")
-		fmt.Println(ui.Colors.Cyan("  ./fcf install --user"))
 		os.Exit(1)
 	}
 
 	// Get install path
-	var installPath string
-	if *userScope && runtime.GOOS != "windows" {
-		// User-scope installation on Unix
-		if err := shell.EnsureUserBinDirectory(); err != nil {
-			fmt.Printf("%s %s\n", ui.Colors.Red("Error:"), err.Error())
-			os.Exit(1)
-		}
-		homeDir, _ := os.UserHomeDir()
-		installPath = filepath.Join(homeDir, ".local", "bin", "fcf")
-	} else {
-		installPath = getInstallPath()
-	}
+	installPath := getInstallPath()
 
-	fmt.Printf("%s %s\n", ui.Colors.Blue("Install scope:"), ui.Colors.Cyan(map[bool]string{true: "User", false: "System"}[*userScope]))
+	fmt.Printf("%s %s\n", ui.Colors.Blue("Install scope:"), ui.Colors.Cyan("System"))
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Install location:"), ui.Colors.Cyan(installPath))
 
 	// Detect OS/distro
@@ -101,14 +99,6 @@ func RunInstall() {
 	// Platform-specific post-install (e.g., add to PATH on Windows)
 	if err := postInstall(); err != nil {
 		fmt.Printf("%s %s\n", ui.Colors.Yellow("Warning:"), err.Error())
-	}
-
-	// Add user bin to PATH if needed (user-scope on Unix)
-	if *userScope && runtime.GOOS != "windows" && !shell.IsUserBinInPath() {
-		homeDir, _ := os.UserHomeDir()
-		if err := shell.AddUserBinToPath(homeDir); err != nil {
-			fmt.Printf("%s %s\n", ui.Colors.Yellow("Warning:"), err.Error())
-		}
 	}
 
 	// Shell integration

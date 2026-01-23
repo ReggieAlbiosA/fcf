@@ -39,8 +39,8 @@ WORKDIR /home/fcfuser
 # Create .bashrc file before installing shell integration
 RUN touch ~/.bashrc
 
-# Install shell integration for navigation support
-RUN /usr/local/bin/fcf install --user
+# Install shell integration for navigation support (binary already in /usr/local/bin)
+RUN /usr/local/bin/fcf install --shell-only
 
 # Default: start interactive bash with shell integration loaded
 CMD ["/bin/bash"]

@@ -1,0 +1,54 @@
+{
+    "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
+    "version": "3.2.0",
+    "description": "Fast, interactive file and folder finder with parallel search and real-time streaming results",
+    "homepage": "https://github.com/ReggieAlbiosA/fcf",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/ReggieAlbiosA/fcf/releases/download/v3.2.0/fcf-windows-amd64.exe",
+            "hash": "PLACEHOLDER_SHA256_WINDOWS_AMD64"
+        },
+        "32bit": {
+            "url": "https://github.com/ReggieAlbiosA/fcf/releases/download/v3.2.0/fcf-windows-386.exe",
+            "hash": "PLACEHOLDER_SHA256_WINDOWS_386"
+        }
+    },
+    "bin": [
+        ["fcf-windows-amd64.exe", "fcf"],
+        ["fcf-windows-386.exe", "fcf"]
+    ],
+    "checkver": {
+        "github": "https://github.com/ReggieAlbiosA/fcf"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/ReggieAlbiosA/fcf/releases/download/v$version/fcf-windows-amd64.exe"
+            },
+            "32bit": {
+                "url": "https://github.com/ReggieAlbiosA/fcf/releases/download/v$version/fcf-windows-386.exe"
+            }
+        }
+    },
+    "notes": [
+        "To enable directory navigation, run:",
+        "  fcf install --shell-only",
+        "",
+        "Or manually add the fcf function to your PowerShell profile ($PROFILE):",
+        "  function fcf {",
+        "      $navFile = Join-Path $env:TEMP 'fcf_nav_path'",
+        "      if (Test-Path $navFile) { Remove-Item $navFile -Force }",
+        "      & scoop prefix fcf\\fcf.exe @args",
+        "      if (Test-Path $navFile) {",
+        "          $target = Get-Content $navFile -Raw",
+        "          Remove-Item $navFile -Force",
+        "          if (Test-Path $target -PathType Container) {",
+        "              Set-Location $target",
+        "          }",
+        "      }",
+        "  }",
+        "",
+        "Then reload your PowerShell profile: . $PROFILE"
+    ]
+}

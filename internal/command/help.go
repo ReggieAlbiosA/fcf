@@ -33,6 +33,8 @@ func ShowHelp() {
 	fmt.Println()
 	fmt.Println(ui.Colors.Bold("COMMANDS:"))
 	fmt.Printf("    %s              Install fcf to system (requires sudo/admin)\n", ui.Colors.Cyan("install"))
+	fmt.Printf("    %s       Install current binary (for local dev testing)\n", ui.Colors.Cyan("install --local"))
+	fmt.Printf("    %s  Force install without prompts\n", ui.Colors.Cyan("install --force, -f"))
 	fmt.Printf("    %s               Update fcf to the latest version\n", ui.Colors.Cyan("update"))
 	fmt.Printf("    %s            Remove fcf from system\n", ui.Colors.Cyan("uninstall"))
 	fmt.Println()

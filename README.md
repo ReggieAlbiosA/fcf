@@ -84,9 +84,27 @@ sudo fcf update
 
 # Uninstall fcf
 sudo fcf uninstall
+
+# Force reinstall (skip prompts)
+sudo fcf install --force
+# or
+sudo fcf install -f
 ```
 
 On Windows, run these commands in PowerShell as Administrator (without `sudo`).
+
+### Local Development Testing
+
+For developers testing local builds:
+
+```bash
+# Build and install local binary
+go build -o ./fcf ./cmd/fcf
+sudo ./fcf install --local          # Installs without prompts
+sudo ./fcf install --local --force  # Force overwrite
+```
+
+The `--local` flag indicates a development install and skips the "already installed" prompt.
 
 ## Usage
 
@@ -532,6 +550,19 @@ MIT License - see LICENSE file for details
 - GitHub: [@ReggieAlbiosA](https://github.com/ReggieAlbiosA)
 
 ## Changelog
+
+### v3.4.0 (2026-01-26)
+- **Feature:** Added `--local` flag for local development testing
+- **Feature:** Added `--force` / `-f` flag to force install without prompts
+- `fcf install --local` skips "already installed" prompt for rapid dev iteration
+- `fcf install --force` forces overwrite without confirmation
+- Updated help command with new install options
+
+### v3.3.2 (2026-01-26)
+- **Fix:** Correctly handle `sudo su` vs direct `sudo` installation
+- `sudo ./fcf install` → installs shell wrapper for the original user
+- `sudo su` then `fcf install` → installs shell wrapper for root
+- Detects `SUDO_COMMAND` environment variable to distinguish installation contexts
 
 ### v3.3.1 (2026-01-26)
 - **Fix:** Shell integration now installs to correct user's config when using `sudo`

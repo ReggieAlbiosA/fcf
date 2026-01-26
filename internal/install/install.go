@@ -22,6 +22,9 @@ func RunInstall() {
 	shellOverride := fs.String("shell", "", "Override shell detection (bash, zsh, fish)")
 	noShell := fs.Bool("no-shell", false, "Skip shell integration")
 	shellOnly := fs.Bool("shell-only", false, "Only install shell integration (skip binary installation)")
+	local := fs.Bool("local", false, "Install from current binary (for development testing)")
+	force := fs.Bool("force", false, "Force install without prompts")
+	fs.BoolVar(force, "f", false, "Force install without prompts (shorthand)")
 	fs.Parse(os.Args[2:])
 
 	fmt.Println(ui.Colors.Bold(ui.Colors.Cyan("╔════════════════════════════════════════╗")))
@@ -59,12 +62,35 @@ func RunInstall() {
 	// Get install path
 	installPath := getInstallPath()
 
+	// Show install mode
+	if *local {
+		fmt.Printf("%s %s\n", ui.Colors.Blue("Mode:"), ui.Colors.Yellow("Local development"))
+	}
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Install scope:"), ui.Colors.Cyan("System"))
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Install location:"), ui.Colors.Cyan(installPath))
 
 	// Detect OS/distro
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Operating System:"), ui.Colors.Cyan(getOSInfo()))
 	fmt.Println()
+
+	// Check if already installed (unless --local or --force)
+	if !*local && !*force {
+		if _, err := os.Stat(installPath); err == nil {
+			fmt.Println(ui.Colors.Yellow("fcf is already installed at this location."))
+			fmt.Println()
+			fmt.Print(ui.Colors.Bold("Do you want to overwrite? [y/N] "))
+
+			var response string
+			fmt.Scanln(&response)
+			if response != "y" && response != "Y" && response != "yes" && response != "Yes" {
+				fmt.Println()
+				fmt.Println(ui.Colors.Yellow("Installation cancelled."))
+				fmt.Println(ui.Colors.Dim("Tip: Use --force to skip this prompt"))
+				return
+			}
+			fmt.Println()
+		}
+	}
 
 	// Get current executable path
 	execPath, err := os.Executable()

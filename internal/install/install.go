@@ -22,9 +22,6 @@ func RunInstall() {
 	shellOverride := fs.String("shell", "", "Override shell detection (bash, zsh, fish)")
 	noShell := fs.Bool("no-shell", false, "Skip shell integration")
 	shellOnly := fs.Bool("shell-only", false, "Only install shell integration (skip binary installation)")
-	local := fs.Bool("local", false, "Install from current binary (for development testing)")
-	force := fs.Bool("force", false, "Force install without prompts")
-	fs.BoolVar(force, "f", false, "Force install without prompts (shorthand)")
 	fs.Parse(os.Args[2:])
 
 	fmt.Println(ui.Colors.Bold(ui.Colors.Cyan("╔════════════════════════════════════════╗")))
@@ -62,35 +59,21 @@ func RunInstall() {
 	// Get install path
 	installPath := getInstallPath()
 
-	// Show install mode
-	if *local {
-		fmt.Printf("%s %s\n", ui.Colors.Blue("Mode:"), ui.Colors.Yellow("Local development"))
+	// Check if this is an update
+	isUpdate := false
+	if _, err := os.Stat(installPath); err == nil {
+		isUpdate = true
 	}
+
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Install scope:"), ui.Colors.Cyan("System"))
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Install location:"), ui.Colors.Cyan(installPath))
 
 	// Detect OS/distro
 	fmt.Printf("%s %s\n", ui.Colors.Blue("Operating System:"), ui.Colors.Cyan(getOSInfo()))
-	fmt.Println()
-
-	// Check if already installed (unless --local or --force)
-	if !*local && !*force {
-		if _, err := os.Stat(installPath); err == nil {
-			fmt.Println(ui.Colors.Yellow("fcf is already installed at this location."))
-			fmt.Println()
-			fmt.Print(ui.Colors.Bold("Do you want to overwrite? [y/N] "))
-
-			var response string
-			fmt.Scanln(&response)
-			if response != "y" && response != "Y" && response != "yes" && response != "Yes" {
-				fmt.Println()
-				fmt.Println(ui.Colors.Yellow("Installation cancelled."))
-				fmt.Println(ui.Colors.Dim("Tip: Use --force to skip this prompt"))
-				return
-			}
-			fmt.Println()
-		}
+	if isUpdate {
+		fmt.Printf("%s %s\n", ui.Colors.Blue("Mode:"), ui.Colors.Yellow("Update existing installation"))
 	}
+	fmt.Println()
 
 	// Get current executable path
 	execPath, err := os.Executable()
@@ -137,12 +120,20 @@ func RunInstall() {
 }
 
 // copyFile copies a file from src to dst
+// It removes the destination first to handle "text file busy" errors
+// that occur when overwriting an executing binary on Unix systems.
 func copyFile(src, dst string) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("could not open source file: %w", err)
 	}
 	defer sourceFile.Close()
+
+	// Remove existing file first to avoid "text file busy" error
+	// This happens when the destination binary is currently executing
+	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("could not remove existing file: %w", err)
+	}
 
 	destFile, err := os.Create(dst)
 	if err != nil {
@@ -182,6 +173,11 @@ func installShellIntegration(shellOverride string) {
 		fmt.Printf("%s %s\n", ui.Colors.Yellow("Warning:"), "Could not determine home directory for shell integration")
 		return
 	}
+
+	// Debug output
+	fmt.Printf("[DEBUG] Home directory: %s\n", homeDir)
+	fmt.Printf("[DEBUG] SUDO_USER: %s\n", os.Getenv("SUDO_USER"))
+	fmt.Printf("[DEBUG] SUDO_COMMAND: %s\n", os.Getenv("SUDO_COMMAND"))
 
 	fmt.Println()
 	fmt.Println(ui.Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))

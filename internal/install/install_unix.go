@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 )
 
 // isElevated checks if the process is running as root
@@ -42,14 +43,40 @@ func postUninstall() {
 	// /usr/local/bin remains in PATH (used by other tools)
 }
 
+// isInSudoSuMode detects if we're running in "sudo su" mode vs direct "sudo command"
+// In "sudo su" mode, we want to use root's home, not SUDO_USER's home
+func isInSudoSuMode() bool {
+	sudoCmd := os.Getenv("SUDO_COMMAND")
+	if sudoCmd == "" {
+		return false
+	}
+
+	// Get the base command name
+	base := filepath.Base(sudoCmd)
+
+	// Check if SUDO_COMMAND is a shell or su command
+	// This indicates "sudo su" or "sudo bash" etc., not direct "sudo fcf"
+	shellCommands := []string{"su", "bash", "zsh", "fish", "sh", "-bash", "-zsh", "-fish", "-sh"}
+	for _, sh := range shellCommands {
+		if base == sh || strings.HasPrefix(base, sh+" ") {
+			return true
+		}
+	}
+
+	return false
+}
+
 // getRealUserHomeDir returns the home directory of the actual user,
 // even when running under sudo. This is essential for shell integration
 // to be written to the correct user's config files.
+//
+// When running "sudo fcf install": returns original user's home (e.g., /home/reggie)
+// When running "sudo su" then "fcf install": returns root's home (/root)
 func getRealUserHomeDir() (string, error) {
 	// Check if running under sudo
 	sudoUser := os.Getenv("SUDO_USER")
-	if sudoUser != "" {
-		// Look up the actual user's home directory
+	if sudoUser != "" && !isInSudoSuMode() {
+		// Direct "sudo fcf install" - use the original user's home
 		u, err := user.Lookup(sudoUser)
 		if err != nil {
 			// Fall back to os.UserHomeDir if lookup fails
@@ -58,6 +85,7 @@ func getRealUserHomeDir() (string, error) {
 		return u.HomeDir, nil
 	}
 
-	// Not running under sudo, use standard method
+	// Not running under sudo, or in "sudo su" mode - use standard method
+	// In "sudo su" mode, os.UserHomeDir() correctly returns /root
 	return os.UserHomeDir()
 }

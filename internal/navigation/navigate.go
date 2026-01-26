@@ -3,15 +3,80 @@ package navigation
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
+	"strconv"
 
 	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
+// sudoUserInfo holds information about the original user when running under sudo
+var sudoUserInfo struct {
+	detected bool
+	username string
+	uid      int
+}
+
 // getNavFilePath returns the path to the navigation temp file
+// On Unix systems, includes UID to prevent multi-user permission conflicts
+// On Windows, %TEMP% is already user-specific so no UID needed
+// When running under sudo, uses SUDO_USER's UID so navigation works with user's shell
 func getNavFilePath() string {
 	tempDir := os.TempDir()
-	return filepath.Join(tempDir, "fcf_nav_path")
+
+	if runtime.GOOS == "windows" {
+		// Windows: %TEMP% is already user-specific
+		return filepath.Join(tempDir, "fcf_nav_path")
+	}
+
+	// Unix (Linux/macOS): Check if running under sudo
+	uid := os.Getuid()
+
+	// If running as root, check for SUDO_USER
+	if uid == 0 {
+		if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+			// Check SUDO_COMMAND to distinguish "sudo fcf" from "sudo su -> fcf"
+			sudoCmd := os.Getenv("SUDO_COMMAND")
+			isSudoSu := false
+			if sudoCmd != "" {
+				// If SUDO_COMMAND contains su or a shell, we're in "sudo su" mode
+				base := filepath.Base(sudoCmd)
+				for _, sh := range []string{"su", "bash", "zsh", "fish", "sh"} {
+					if len(base) >= len(sh) && base[:len(sh)] == sh {
+						isSudoSu = true
+						break
+					}
+				}
+			}
+
+			// Only use SUDO_USER's UID if this is direct "sudo fcf", not "sudo su -> fcf"
+			if !isSudoSu {
+				if u, err := user.Lookup(sudoUser); err == nil {
+					if sudoUID, err := strconv.Atoi(u.Uid); err == nil {
+						// Store for later message display
+						sudoUserInfo.detected = true
+						sudoUserInfo.username = sudoUser
+						sudoUserInfo.uid = sudoUID
+						uid = sudoUID
+					}
+				}
+			}
+		}
+	}
+
+	return filepath.Join(tempDir, fmt.Sprintf("fcf_nav_path_%d", uid))
+}
+
+// ShowSudoNavigationNote displays a note if running under sudo
+// Call this before navigation to inform the user
+func ShowSudoNavigationNote() {
+	if sudoUserInfo.detected {
+		fmt.Printf("%s Running under sudo - navigation will apply to %s's shell\n",
+			ui.Colors.Yellow("Note:"),
+			ui.Colors.Cyan(sudoUserInfo.username))
+		fmt.Println()
+	}
 }
 
 // writeNavPath writes the navigation path to temp file

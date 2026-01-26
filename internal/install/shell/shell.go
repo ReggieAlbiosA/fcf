@@ -129,7 +129,7 @@ func getShellFunction(shellType ShellType) string {
 func getBashZshFunction() string {
 	return fcfMarkerStart + `
 fcf() {
-    local nav_file="/tmp/fcf_nav_path"
+    local nav_file="/tmp/fcf_nav_path_$(id -u)"
     rm -f "$nav_file"
     command fcf "$@"
     if [[ -f "$nav_file" ]]; then
@@ -148,7 +148,7 @@ fcf() {
 func getFishFunction() string {
 	return fcfMarkerStart + `
 function fcf
-    set nav_file /tmp/fcf_nav_path
+    set nav_file /tmp/fcf_nav_path_(id -u)
     rm -f $nav_file
     command fcf $argv
     if test -f $nav_file

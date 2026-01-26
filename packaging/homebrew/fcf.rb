@@ -51,7 +51,7 @@ class Fcf < Formula
 
       For Bash (~/.bashrc) or Zsh (~/.zshrc):
         fcf() {
-          local nav_file="/tmp/fcf_nav_path"
+          local nav_file="/tmp/fcf_nav_path_$(id -u)"
           rm -f "$nav_file"
           command fcf "$@"
           if [[ -f "$nav_file" ]]; then
@@ -66,7 +66,7 @@ class Fcf < Formula
 
       For Fish (~/.config/fish/config.fish):
         function fcf
-          set nav_file /tmp/fcf_nav_path
+          set nav_file /tmp/fcf_nav_path_(id -u)
           rm -f $nav_file
           command fcf $argv
           if test -f $nav_file

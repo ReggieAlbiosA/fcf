@@ -70,35 +70,58 @@ func SearchWithFd(pattern, searchPath string, opts *ui.Options, stopChan <-chan 
 		Results: []string{},
 		Stopped: false,
 	}
-	scanner := bufio.NewScanner(stdout)
+
+	// Use a goroutine to read lines so we can select between lines and stop signal
+	lineChan := make(chan string, 100)
+	doneChan := make(chan struct{})
+
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line != "" {
+				lineChan <- line
+			}
+		}
+		close(doneChan)
+	}()
+
 	count := 0
 
-	for scanner.Scan() {
-		// Check for stop signal
+	for {
 		select {
 		case <-stopChan:
 			cmd.Process.Kill()
 			result.Stopped = true
+			cmd.Wait()
 			return result, nil
-		default:
-		}
 
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
+		case line := <-lineChan:
+			count++
+			result.Results = append(result.Results, line)
 
-		count++
-		result.Results = append(result.Results, line)
+			// Display result in real-time (streaming)
+			if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
+				ui.ShowResult(line, count)
+			}
 
-		// Display result in real-time (streaming)
-		if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
-			ui.ShowResult(line, count)
+		case <-doneChan:
+			// Scanner finished, drain any remaining lines
+			for {
+				select {
+				case line := <-lineChan:
+					count++
+					result.Results = append(result.Results, line)
+					if opts.MaxDisplay == 0 || count <= opts.MaxDisplay {
+						ui.ShowResult(line, count)
+					}
+				default:
+					cmd.Wait()
+					return result, nil
+				}
+			}
 		}
 	}
-
-	cmd.Wait()
-	return result, nil
 }
 
 // SearchWithWalk uses filepath.WalkDir as fallback
@@ -196,7 +219,6 @@ func SearchWithStop(pattern, searchPath string) (*SearchResult, bool) {
 	stopChan := make(chan struct{})
 	keyChan := make(chan string, 10)
 	stopListener := input.StartKeyListener(keyChan)
-	defer stopListener()
 
 	// Goroutine to handle 's' key press
 	go func() {
@@ -214,6 +236,10 @@ func SearchWithStop(pattern, searchPath string) (*SearchResult, bool) {
 	} else {
 		result, _ = SearchWithWalk(pattern, absPath, &ui.Opts, stopChan)
 	}
+
+	// Clean up: stop the key listener and flush any leftover input
+	stopListener()
+	input.FlushStdin()
 
 	return result, usingFd
 }

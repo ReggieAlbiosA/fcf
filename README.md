@@ -82,29 +82,14 @@ fcf install --shell-only  # Add shell integration
 # Update to latest version
 sudo fcf update
 
+# Reinstall/update from local binary
+sudo ./fcf install
+
 # Uninstall fcf
 sudo fcf uninstall
-
-# Force reinstall (skip prompts)
-sudo fcf install --force
-# or
-sudo fcf install -f
 ```
 
 On Windows, run these commands in PowerShell as Administrator (without `sudo`).
-
-### Local Development Testing
-
-For developers testing local builds:
-
-```bash
-# Build and install local binary
-go build -o ./fcf ./cmd/fcf
-sudo ./fcf install --local          # Installs without prompts
-sudo ./fcf install --local --force  # Force overwrite
-```
-
-The `--local` flag indicates a development install and skips the "already installed" prompt.
 
 ## Usage
 
@@ -552,11 +537,10 @@ MIT License - see LICENSE file for details
 ## Changelog
 
 ### v3.4.0 (2026-01-26)
-- **Feature:** Added `--local` flag for local development testing
-- **Feature:** Added `--force` / `-f` flag to force install without prompts
-- `fcf install --local` skips "already installed" prompt for rapid dev iteration
-- `fcf install --force` forces overwrite without confirmation
-- Updated help command with new install options
+- **Improvement:** `fcf install` now automatically handles updates without prompts
+- **Fix:** Resolved "text file busy" error when reinstalling over running binary
+- **Fix:** Improved 's' key detection for stopping search (use direct fd read)
+- Simplified installation: just run `sudo ./fcf install` for fresh install or update
 
 ### v3.3.2 (2026-01-26)
 - **Fix:** Correctly handle `sudo su` vs direct `sudo` installation

@@ -13,13 +13,14 @@ import (
 
 // Options holds the command-line options
 type Options struct {
-	Pattern    string
-	Path       string
-	IgnoreCase bool
-	Type       string
-	ShowSize   bool
-	MaxDisplay int
-	Help       bool
+	Pattern        string
+	Path           string
+	IgnoreCase     bool
+	Type           string
+	ShowSize       bool
+	MaxDisplay     int
+	Help           bool
+	SkipNavigation bool
 }
 
 // Opts holds the global command-line options

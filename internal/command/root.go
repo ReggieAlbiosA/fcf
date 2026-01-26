@@ -42,6 +42,7 @@ func parseArgs() {
 	flag.StringVar(&ui.Opts.Type, "t", "", "Filter by type: 'f' for files, 'd' for directories")
 	flag.BoolVar(&ui.Opts.ShowSize, "show-size", false, "Display file sizes")
 	flag.IntVar(&ui.Opts.MaxDisplay, "max-display", 0, "Maximum results to display (0 = unlimited)")
+	flag.BoolVar(&ui.Opts.SkipNavigation, "S", false, "Skip navigation after search")
 
 	flag.Parse()
 
@@ -66,8 +67,11 @@ func runSingleSearch() {
 
 	ui.ShowSummaryWithStatus(len(result.Results), elapsed, result.Stopped)
 
-	// If results found, offer navigation
-	if len(result.Results) > 0 {
+	// If results found and navigation not skipped, offer navigation
+	if len(result.Results) > 0 && !ui.Opts.SkipNavigation {
+		// Show note if running under sudo
+		navigation.ShowSudoNavigationNote()
+
 		targetPath := SelectResult(result.Results)
 		if targetPath != "" {
 			fmt.Println()

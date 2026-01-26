@@ -7,12 +7,26 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ReggieAlbiosA/fcf/internal/input"
 	"github.com/ReggieAlbiosA/fcf/internal/navigation"
 	"github.com/ReggieAlbiosA/fcf/internal/search"
 	"github.com/ReggieAlbiosA/fcf/internal/ui"
 )
 
-var reader = bufio.NewReader(os.Stdin)
+var reader *bufio.Reader
+
+func init() {
+	reader = bufio.NewReader(os.Stdin)
+}
+
+// resetReader creates a fresh bufio.Reader to ensure clean state
+// after raw mode operations that might have corrupted the buffer
+func resetReader() {
+	// Flush the terminal's input buffer (kernel level)
+	input.FlushStdin()
+	// Create a completely fresh reader
+	reader = bufio.NewReader(os.Stdin)
+}
 
 // readLine reads a line of input from stdin
 func readLine(prompt string) string {
@@ -79,6 +93,9 @@ func getPattern() string {
 
 // SelectResult prompts user to select a result for navigation (Step 3)
 func SelectResult(results []string) string {
+	// Reset reader to ensure clean state after raw mode key listening during search
+	resetReader()
+
 	fmt.Println()
 	fmt.Printf("%s Enter path to navigate to\n", ui.Colors.Bold("Step 3:"))
 	fmt.Printf("%s\n", ui.Colors.Dim("(Enter a number from results, full path, or press Enter to skip)"))
@@ -178,8 +195,11 @@ func RunInteractiveMode() {
 		// Show summary
 		ui.ShowSummaryWithStatus(len(results), elapsed, searchResult.Stopped)
 
-		// Step 3: Navigate to path
-		if len(results) > 0 {
+		// Step 3: Navigate to path (only if not skipped)
+		if len(results) > 0 && !ui.Opts.SkipNavigation {
+			// Show note if running under sudo
+			navigation.ShowSudoNavigationNote()
+
 			targetPath := SelectResult(results)
 			if targetPath != "" {
 				fmt.Println()

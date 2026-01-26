@@ -9,6 +9,32 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// FlushStdin discards any pending input in the terminal's input buffer.
+// This should be called after using raw mode or direct fd reads to ensure
+// no leftover keypresses interfere with subsequent line-based input.
+func FlushStdin() {
+	fd := int(os.Stdin.Fd())
+
+	// Method 1: Use tcflush via ioctl to discard data received but not yet read
+	// Using Syscall directly for reliability
+	unix.Syscall(unix.SYS_IOCTL, uintptr(fd), uintptr(unix.TCFLSH), uintptr(unix.TCIFLUSH))
+
+	// Method 2: Also manually drain any remaining data in non-blocking mode
+	// Set non-blocking temporarily
+	unix.SetNonblock(fd, true)
+	buf := make([]byte, 256)
+	for {
+		n, err := unix.Read(fd, buf)
+		if n <= 0 || err != nil {
+			break
+		}
+	}
+	unix.SetNonblock(fd, false)
+
+	// Small delay to let terminal fully settle after mode changes
+	time.Sleep(50 * time.Millisecond)
+}
+
 // setRawMode sets the terminal to raw mode and returns a restore function
 func setRawMode() (restore func(), err error) {
 	fd := int(os.Stdin.Fd())
@@ -56,6 +82,14 @@ func ReadKeyNonBlocking() string {
 // StartKeyListener starts listening for key presses and sends them to the channel
 // Call the returned stop function to clean up
 func StartKeyListener(keyChan chan<- string) (stop func()) {
+	fd := int(os.Stdin.Fd())
+
+	// Check if stdin is a terminal
+	if _, err := unix.IoctlGetTermios(fd, ioctlReadTermios); err != nil {
+		// Not a terminal, can't listen for keys
+		return func() {}
+	}
+
 	restore, err := setRawMode()
 	if err != nil {
 		return func() {}
@@ -64,27 +98,33 @@ func StartKeyListener(keyChan chan<- string) (stop func()) {
 	done := make(chan struct{})
 
 	go func() {
-		fd := int(os.Stdin.Fd())
 		buf := make([]byte, 1)
+
+		// Set non-blocking mode for the duration of listening
+		unix.SetNonblock(fd, true)
+		defer unix.SetNonblock(fd, false)
 
 		for {
 			select {
 			case <-done:
 				return
 			default:
-				// Set non-blocking temporarily
-				unix.SetNonblock(fd, true)
-				n, _ := os.Stdin.Read(buf)
-				unix.SetNonblock(fd, false)
-
+				// Use unix.Read directly on file descriptor to avoid
+				// conflicts with bufio.Reader wrapping os.Stdin
+				n, err := unix.Read(fd, buf)
+				if err == unix.EAGAIN || err == unix.EWOULDBLOCK {
+					// No data available, sleep briefly
+					time.Sleep(30 * time.Millisecond)
+					continue
+				}
 				if n > 0 {
 					select {
 					case keyChan <- string(buf[0]):
 					default:
 					}
 				} else {
-					// Small sleep to avoid busy loop
-					time.Sleep(50 * time.Millisecond)
+					// Sleep to avoid busy loop
+					time.Sleep(30 * time.Millisecond)
 				}
 			}
 		}

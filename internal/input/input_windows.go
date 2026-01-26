@@ -8,12 +8,13 @@ import (
 )
 
 var (
-	kernel32           = syscall.NewLazyDLL("kernel32.dll")
-	procGetStdHandle   = kernel32.NewProc("GetStdHandle")
-	procReadConsoleInput = kernel32.NewProc("ReadConsoleInputW")
+	kernel32                          = syscall.NewLazyDLL("kernel32.dll")
+	procGetStdHandle                  = kernel32.NewProc("GetStdHandle")
+	procReadConsoleInput              = kernel32.NewProc("ReadConsoleInputW")
 	procGetNumberOfConsoleInputEvents = kernel32.NewProc("GetNumberOfConsoleInputEvents")
-	procSetConsoleMode = kernel32.NewProc("SetConsoleMode")
-	procGetConsoleMode = kernel32.NewProc("GetConsoleMode")
+	procSetConsoleMode                = kernel32.NewProc("SetConsoleMode")
+	procGetConsoleMode                = kernel32.NewProc("GetConsoleMode")
+	procFlushConsoleInputBuffer       = kernel32.NewProc("FlushConsoleInputBuffer")
 )
 
 const (
@@ -42,6 +43,16 @@ type keyEventRecord struct {
 func getStdHandle(handle uintptr) uintptr {
 	ret, _, _ := procGetStdHandle.Call(handle)
 	return ret
+}
+
+// FlushStdin discards any pending input in the console's input buffer.
+// This should be called after using raw mode to ensure no leftover keypresses
+// interfere with subsequent line-based input.
+func FlushStdin() {
+	handle := getStdHandle(stdInputHandle)
+	if handle != 0 {
+		procFlushConsoleInputBuffer.Call(handle)
+	}
 }
 
 // ReadKeyNonBlocking attempts to read a key without blocking

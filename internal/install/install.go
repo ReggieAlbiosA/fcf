@@ -151,7 +151,7 @@ func getOSInfo() string {
 
 // installShellIntegration detects shells and installs wrapper functions
 func installShellIntegration(shellOverride string) {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := getRealUserHomeDir()
 	if err != nil {
 		fmt.Printf("%s %s\n", ui.Colors.Yellow("Warning:"), "Could not determine home directory for shell integration")
 		return

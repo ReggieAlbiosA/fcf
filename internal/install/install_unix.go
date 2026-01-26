@@ -4,6 +4,7 @@ package install
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
@@ -39,4 +40,24 @@ func postInstall() error {
 func postUninstall() {
 	// On Unix, no additional cleanup required
 	// /usr/local/bin remains in PATH (used by other tools)
+}
+
+// getRealUserHomeDir returns the home directory of the actual user,
+// even when running under sudo. This is essential for shell integration
+// to be written to the correct user's config files.
+func getRealUserHomeDir() (string, error) {
+	// Check if running under sudo
+	sudoUser := os.Getenv("SUDO_USER")
+	if sudoUser != "" {
+		// Look up the actual user's home directory
+		u, err := user.Lookup(sudoUser)
+		if err != nil {
+			// Fall back to os.UserHomeDir if lookup fails
+			return os.UserHomeDir()
+		}
+		return u.HomeDir, nil
+	}
+
+	// Not running under sudo, use standard method
+	return os.UserHomeDir()
 }

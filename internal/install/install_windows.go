@@ -116,3 +116,9 @@ func postUninstall() {
 		// Directory might not be empty or might not exist, ignore
 	}
 }
+
+// getRealUserHomeDir returns the home directory of the current user.
+// On Windows, there's no sudo equivalent, so this just returns os.UserHomeDir().
+func getRealUserHomeDir() (string, error) {
+	return os.UserHomeDir()
+}

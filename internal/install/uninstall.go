@@ -86,7 +86,7 @@ func RunUninstall() {
 
 // removeShellIntegration removes the shell wrapper function from config files
 func removeShellIntegration() {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := getRealUserHomeDir()
 	if err != nil {
 		fmt.Printf("%s %s\n", ui.Colors.Yellow("Warning:"), "Could not determine home directory")
 		return

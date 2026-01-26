@@ -533,6 +533,12 @@ MIT License - see LICENSE file for details
 
 ## Changelog
 
+### v3.3.1 (2026-01-26)
+- **Fix:** Shell integration now installs to correct user's config when using `sudo`
+- Previously, running `sudo ./fcf install` wrote shell wrapper to `/root/.bashrc` instead of the user's config
+- Now correctly detects `SUDO_USER` environment variable to find the real user's home directory
+- Navigation feature now works properly after one-liner installation
+
 ### v3.3.0 (2026-01-23)
 - **Major:** Package management and search control
 - Added `fcf update` command for self-updating from GitHub releases

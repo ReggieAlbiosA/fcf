@@ -1,8 +1,6 @@
 name: Build FCF
 
 on:
-  push:
-    branches: ['**']
   release:
     types: [created]
   workflow_dispatch:
@@ -50,7 +48,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: "1.21"
 
       - name: Download dependencies
         run: go mod tidy

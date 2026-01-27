@@ -174,11 +174,6 @@ func installShellIntegration(shellOverride string) {
 		return
 	}
 
-	// Debug output
-	fmt.Printf("[DEBUG] Home directory: %s\n", homeDir)
-	fmt.Printf("[DEBUG] SUDO_USER: %s\n", os.Getenv("SUDO_USER"))
-	fmt.Printf("[DEBUG] SUDO_COMMAND: %s\n", os.Getenv("SUDO_COMMAND"))
-
 	fmt.Println()
 	fmt.Println(ui.Colors.Bold("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println(ui.Colors.Bold("Configuring shell integration..."))
@@ -225,9 +220,14 @@ func installShellIntegration(shellOverride string) {
 	for _, s := range shells {
 		fmt.Printf("%s %s... ", ui.Colors.Yellow("Configuring"), s.Name)
 
-		// Check if already installed
+		// Check if already installed - update if so, add if not
 		if shell.HasExistingInstallation(s.ConfigPath) {
-			fmt.Println(ui.Colors.Yellow("already configured"))
+			if err := shell.AddShellIntegration(s.ConfigPath, s.Type); err != nil {
+				fmt.Printf("%s %s\n", ui.Colors.Red("FAILED"), err.Error())
+				continue
+			}
+			fmt.Println(ui.Colors.Green("updated"))
+			successCount++
 			continue
 		}
 
@@ -239,6 +239,24 @@ func installShellIntegration(shellOverride string) {
 
 		fmt.Println(ui.Colors.Green("OK"))
 		successCount++
+	}
+
+	// Also install/update root's shell configs when running with sudo
+	if rootHome := getRootHomeDirIfNeeded(homeDir); rootHome != "" {
+		rootShells := shell.DetectShellsFromConfigFiles(rootHome)
+		for _, s := range rootShells {
+			fmt.Printf("%s %s (root)... ", ui.Colors.Yellow("Configuring"), s.Name)
+			if err := shell.AddShellIntegration(s.ConfigPath, s.Type); err != nil {
+				fmt.Printf("%s %s\n", ui.Colors.Red("FAILED"), err.Error())
+				continue
+			}
+			if shell.HasExistingInstallation(s.ConfigPath) {
+				fmt.Println(ui.Colors.Green("updated"))
+			} else {
+				fmt.Println(ui.Colors.Green("OK"))
+			}
+			successCount++
+		}
 	}
 
 	fmt.Println()

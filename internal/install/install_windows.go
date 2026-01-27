@@ -117,6 +117,11 @@ func postUninstall() {
 	}
 }
 
+// getRootHomeDirIfNeeded is a no-op on Windows (no sudo equivalent).
+func getRootHomeDirIfNeeded(realUserHome string) string {
+	return ""
+}
+
 // getRealUserHomeDir returns the home directory of the current user.
 // On Windows, there's no sudo equivalent, so this just returns os.UserHomeDir().
 func getRealUserHomeDir() (string, error) {

@@ -66,6 +66,23 @@ func isInSudoSuMode() bool {
 	return false
 }
 
+// getRootHomeDirIfNeeded returns root's home directory when running
+// with sudo (not sudo su) and the real user isn't root.
+// Returns "" if root's shell integration doesn't need updating.
+func getRootHomeDirIfNeeded(realUserHome string) string {
+	if !isElevated() || isInSudoSuMode() {
+		return ""
+	}
+	u, err := user.Lookup("root")
+	if err != nil {
+		return ""
+	}
+	if u.HomeDir == realUserHome {
+		return "" // already targeting root's home
+	}
+	return u.HomeDir
+}
+
 // getRealUserHomeDir returns the home directory of the actual user,
 // even when running under sudo. This is essential for shell integration
 // to be written to the correct user's config files.

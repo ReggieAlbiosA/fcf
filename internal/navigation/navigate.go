@@ -16,6 +16,7 @@ var sudoUserInfo struct {
 	detected bool
 	username string
 	uid      int
+	gid      int
 }
 
 // getNavFilePath returns the path to the navigation temp file
@@ -54,10 +55,12 @@ func getNavFilePath() string {
 			if !isSudoSu {
 				if u, err := user.Lookup(sudoUser); err == nil {
 					if sudoUID, err := strconv.Atoi(u.Uid); err == nil {
-						// Store for later message display
+						sudoGID, _ := strconv.Atoi(u.Gid)
+						// Store for later message display and file ownership
 						sudoUserInfo.detected = true
 						sudoUserInfo.username = sudoUser
 						sudoUserInfo.uid = sudoUID
+						sudoUserInfo.gid = sudoGID
 						uid = sudoUID
 					}
 				}
@@ -82,7 +85,16 @@ func ShowSudoNavigationNote() {
 // writeNavPath writes the navigation path to temp file
 func writeNavPath(targetPath string) error {
 	navFile := getNavFilePath()
-	return os.WriteFile(navFile, []byte(targetPath), 0644)
+	if err := os.WriteFile(navFile, []byte(targetPath), 0644); err != nil {
+		return err
+	}
+	// When running under sudo, chown the nav file to the original user
+	// so their shell wrapper can clean it up (sticky bit on /tmp prevents
+	// non-owner deletion of root-owned files)
+	if sudoUserInfo.detected {
+		os.Chown(navFile, sudoUserInfo.uid, sudoUserInfo.gid)
+	}
+	return nil
 }
 
 // cleanupNavFile removes the navigation temp file if it exists
